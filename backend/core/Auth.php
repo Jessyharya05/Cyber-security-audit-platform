@@ -1,5 +1,5 @@
 <?php
-// core/Auth.php
+// core/Auth.php - PostgreSQL compatible
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Session.php';
@@ -14,9 +14,10 @@ class Auth {
         $this->session = new Session();
     }
     
-    // LOGIN FUNCTION
+    // LOGIN FUNCTION (SAMA, TIDAK BERUBAH)
     public function login($email, $password) {
         try {
+            // Di PostgreSQL, placeholder tetap :email (sama)
             $query = "SELECT * FROM users WHERE email = :email LIMIT 1";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':email', $email);
@@ -24,21 +25,21 @@ class Auth {
             
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            // Password verify (sama)
             if ($user && password_verify($password, $user['password'])) {
-                // Set session
                 $this->session->set('user_id', $user['id']);
-                $this->session->set('user_name', $user['fullName']);
+                $this->session->set('user_name', $user['fullname']); // PostgreSQL case-sensitive? 
+                // Atau $user['fullname'] (tergantung query)
                 $this->session->set('user_email', $user['email']);
                 $this->session->set('user_role', $user['role']);
                 
-                // Update last login
                 $this->updateLastLogin($user['id']);
                 
                 return [
                     'success' => true,
                     'user' => [
                         'id' => $user['id'],
-                        'name' => $user['fullName'],
+                        'name' => $user['fullname'],
                         'email' => $user['email'],
                         'role' => $user['role']
                     ]
@@ -48,11 +49,11 @@ class Auth {
             return ['success' => false, 'message' => 'Invalid email or password'];
             
         } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Login failed'];
+            return ['success' => false, 'message' => 'Login failed: ' . $e->getMessage()];
         }
     }
     
-    // REGISTER FUNCTION
+    // REGISTER FUNCTION (SAMA)
     public function register($data, $role) {
         try {
             // Check if email exists
@@ -65,50 +66,48 @@ class Auth {
                 return ['success' => false, 'message' => 'Email already exists'];
             }
             
-            // Hash password
             $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
             
             // Insert new user
-            $query = "INSERT INTO users (fullName, email, password, role) 
-                      VALUES (:fullName, :email, :password, :role)";
+            $query = "INSERT INTO users (fullname, email, password, role) 
+                      VALUES (:fullname, :email, :password, :role)";
             
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':fullName', $data['fullName']);
+            $stmt->bindParam(':fullname', $data['fullName']);
             $stmt->bindParam(':email', $data['email']);
             $stmt->bindParam(':password', $hashedPassword);
             $stmt->bindParam(':role', $role);
             
             if ($stmt->execute()) {
+                // PostgreSQL: lastInsertId() works
                 $userId = $this->db->lastInsertId();
                 
-                // If role is auditee, create company profile
                 if ($role === 'auditee') {
                     $this->createCompanyProfile($userId, $data);
                 }
                 
-                // Auto login after register
                 return $this->login($data['email'], $data['password']);
             }
             
             return ['success' => false, 'message' => 'Registration failed'];
             
         } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Registration failed'];
+            return ['success' => false, 'message' => 'Registration failed: ' . $e->getMessage()];
         }
     }
     
-    // LOGOUT FUNCTION
+    // LOGOUT (SAMA)
     public function logout() {
         $this->session->destroy();
         return ['success' => true];
     }
     
-    // CHECK IF USER IS LOGGED IN
+    // CHECK IF USER IS LOGGED IN (SAMA)
     public function check() {
         return $this->session->has('user_id');
     }
     
-    // GET CURRENT USER
+    // GET CURRENT USER (SAMA)
     public function user() {
         if (!$this->check()) {
             return null;
@@ -130,7 +129,6 @@ class Auth {
     }
     
     private function createCompanyProfile($userId, $data) {
-        // Calculate exposure level
         $exposureLevel = $this->calculateExposureLevel($data);
         
         $query = "INSERT INTO companies (user_id, name, sector, employees, system_type, exposure_level) 
@@ -149,18 +147,15 @@ class Auth {
     private function calculateExposureLevel($data) {
         $score = 0;
         
-        // Sector risk
         $highRiskSectors = ['Finance', 'Healthcare', 'Government'];
         if (in_array($data['sector'], $highRiskSectors)) $score += 3;
         else if ($data['sector'] === 'Technology') $score += 2;
         else $score += 1;
         
-        // Employee count
         if ($data['employees'] > 1000) $score += 3;
         else if ($data['employees'] > 100) $score += 2;
         else $score += 1;
         
-        // System type
         if (strpos(strtolower($data['systemType']), 'cloud') !== false) $score += 3;
         else $score += 1;
         
