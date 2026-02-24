@@ -1,6 +1,6 @@
 -- database/schema.sql (PostgreSQL version)
 
--- Create database
+-- Create database (jalankan di pgAdmin)
 CREATE DATABASE cyberguard_db;
 
 -- Connect to database
@@ -20,20 +20,19 @@ CREATE TABLE users (
 -- Companies table (for auditee)
 CREATE TABLE companies (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     sector VARCHAR(50),
     employees INTEGER,
     system_type VARCHAR(100),
     exposure_level VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Assets table
 CREATE TABLE assets (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     owner VARCHAR(100),
     location VARCHAR(100),
@@ -41,8 +40,7 @@ CREATE TABLE assets (
     cia VARCHAR(20),
     criticality DECIMAL(5,2),
     status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Auditors table
@@ -64,8 +62,8 @@ CREATE TABLE auditors (
 -- Audits table
 CREATE TABLE audits (
     id SERIAL PRIMARY KEY,
-    companyId INTEGER NOT NULL,
-    auditorId INTEGER NOT NULL,
+    companyId INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    auditorId INTEGER NOT NULL REFERENCES auditors(id) ON DELETE CASCADE,
     scope VARCHAR(200),
     startDate DATE,
     endDate DATE,
@@ -73,15 +71,13 @@ CREATE TABLE audits (
     progress INTEGER DEFAULT 0,
     findings INTEGER DEFAULT 0,
     criticalFindings INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (companyId) REFERENCES companies(id) ON DELETE CASCADE,
-    FOREIGN KEY (auditorId) REFERENCES auditors(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Findings table
 CREATE TABLE findings (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
     severity VARCHAR(20) CHECK (severity IN ('critical', 'high', 'medium', 'low')),
@@ -92,14 +88,13 @@ CREATE TABLE findings (
     auditor VARCHAR(100),
     recommendation TEXT,
     progress INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Evidence table
 CREATE TABLE evidence (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     control VARCHAR(200) NOT NULL,
     description TEXT,
     asset VARCHAR(100),
@@ -110,8 +105,7 @@ CREATE TABLE evidence (
     filesize VARCHAR(50),
     uploaded_by VARCHAR(100),
     uploaded_at DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert sample data
@@ -120,14 +114,5 @@ INSERT INTO users (fullName, email, password, role) VALUES
 ('Auditor User', 'auditor@cyberguard.com', 'auditor123', 'auditor'),
 ('Tech Solutions Inc', 'company@tech.com', 'company123', 'auditee');
 
-INSERT INTO companies (user_id, name, sector, employees, system_type, exposure_level) VALUES
-(3, 'Tech Solutions Inc', 'Technology', 150, 'Web & Cloud', 'Medium');
-
-INSERT INTO auditors (name, email, phone, specialization, certifications, assigned, completed, rating, joinDate) VALUES
-('Dr. Robert Wilson', 'robert@cyber.com', '+62 812-3456-7890', 'Network Security', 'CISSP,CEH,CISA', 5, 12, 4.8, '2023-01-15'),
-('Lisa Anderson', 'lisa@cyber.com', '+62 813-9876-5432', 'Web Security', 'OSCP,CEH,CISSP', 3, 8, 4.9, '2023-03-20');
-
-INSERT INTO assets (company_id, name, owner, location, type, cia, criticality) VALUES
-(1, 'Web Server', 'IT Department', 'AWS Cloud', 'Server', 'High', 8.5),
-(1, 'Customer Database', 'IT Department', 'On-premise', 'Database', 'Critical', 9.2),
-(1, 'HR Application', 'HR Department', 'Cloud', 'Application', 'Medium', 6.8);
+-- Note: Password di atas belum di-hash. Untuk production, hash dulu dengan bcrypt.
+-- Tapi untuk development/testing, nanti akan di-hash oleh aplikasi.
