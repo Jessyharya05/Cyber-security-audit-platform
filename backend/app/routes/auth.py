@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from ..models import SessionLocal, User, Company
 from ..config import Config
@@ -16,11 +17,11 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 # Pydantic models
 class UserCreate(BaseModel):
-    fullName: str
+    fullname: str
     email: str
     password: str
     role: str
@@ -116,7 +117,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
-        fullName=user_data.fullName,
+         fullname=user_data.fullname,
         email=user_data.email,
         password=hashed_password,
         role=user_data.role
@@ -131,7 +132,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         # Default company values
         company = Company(
             user_id=new_user.id,
-            name=f"{user_data.fullName}'s Company",
+            name=f"{user_data.fullname}'s Company",
             sector='Technology',
             employees=0,
             system_type='',
@@ -152,7 +153,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": {
             "id": new_user.id,
-            "name": new_user.fullName,
+            "name": new_user.fullname,
             "email": new_user.email,
             "role": new_user.role
         }
@@ -167,6 +168,8 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    
     
     # Update last login
     user.last_login = datetime.utcnow()
@@ -184,16 +187,52 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": {
             "id": user.id,
-            "name": user.fullName,
+           "name": user.fullname,
             "email": user.email,
             "role": user.role
         }
+    }
+
+@router.post("/token")
+async def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Endpoint khusus untuk OAuth2 flow (Swagger Authorize)"""
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role},
+        expires_delta=timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
     }
 
 @router.post("/logout")
 async def logout():
     # Client side logout (just return success)
     return {"success": True, "message": "Logged out successfully"}
+
+async def get_current_user_dependency(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, Config.SECRET_KEY, algorithms=[Config.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
 
 @router.get("/me")
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -211,7 +250,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     
     return {
         "id": user.id,
-        "name": user.fullName,
+        "name": user.fullname, 
         "email": user.email,
         "role": user.role
     }

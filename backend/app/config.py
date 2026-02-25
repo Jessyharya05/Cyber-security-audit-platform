@@ -8,7 +8,7 @@ load_dotenv()
 class Config:
     # Database PostgreSQL
     DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = os.getenv("DB_PORT", "5433")  # PostgreSQL 16 di port 5433
+    DB_PORT = os.getenv("DB_PORT", "5432")  # PostgreSQL 16 di port 543
     DB_NAME = os.getenv("DB_NAME", "cyberguard_db")
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")  # Ganti dengan password kamu

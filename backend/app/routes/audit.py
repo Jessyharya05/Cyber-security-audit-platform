@@ -3,8 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import date
-
+from datetime import date, datetime  # <-- FIX: tambah datetime
 from ..models import SessionLocal, Audit, Company, Auditor, Finding
 from .auth import get_current_user
 from pydantic import BaseModel
@@ -34,11 +33,11 @@ class AuditResponse(AuditBase):
     progress: int
     findings: int
     criticalFindings: int
-    created_at: datetime
+    created_at: datetime  # <-- sekarang udah kenal datetime
     
     class Config:
         from_attributes = True
-
+        
 class FindingBase(BaseModel):
     title: str
     description: str

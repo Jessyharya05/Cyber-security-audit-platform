@@ -17,10 +17,10 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    fullName = Column(String(100), nullable=False)
+    fullname = Column("fullname", String(100), nullable=False)  # ← GANTI INI!
     email = Column(String(100), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False)  # admin, auditor, auditee
+    role = Column(String(20), nullable=False)
     last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -58,6 +58,7 @@ class Asset(Base):
     type = Column(String(50))
     cia = Column(String(20))
     criticality = Column(DECIMAL(5,2))
+    risk_level = Column(String(20))
     status = Column(String(20), default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
     
