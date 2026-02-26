@@ -1,268 +1,232 @@
-// src/components/admin/AdminUsers.js
-
 import React, { useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
-  FaUsers, 
-  FaSearch, 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaEye,
-  FaUserTie,
-  FaUserCheck,
-  FaFilter,
-  FaSort,
-  FaKey,
-  FaBan
+    FaUsers, FaUserTie, FaUserCheck, FaSearch,
+    FaEdit, FaTrash, FaCheckCircle
 } from 'react-icons/fa';
 import './Admin.css';
 
 const AdminUsers = () => {
-  const [users, setUsers] = useState([
-    { id: 1, name: 'John Smith', email: 'john@techcorp.com', role: 'auditee', company: 'Tech Corp', status: 'active', lastLogin: '2024-02-20' },
-    { id: 2, name: 'Sarah Johnson', email: 'sarah@finance.com', role: 'auditee', company: 'Finance Ltd', status: 'active', lastLogin: '2024-02-19' },
-    { id: 3, name: 'Michael Chen', email: 'michael@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-21' },
-    { id: 4, name: 'Emily Davis', email: 'emily@healthcare.com', role: 'auditee', company: 'HealthCare Inc', status: 'inactive', lastLogin: '2024-02-01' },
-    { id: 5, name: 'Dr. Robert Wilson', email: 'robert@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-20' },
-    { id: 6, name: 'Lisa Anderson', email: 'lisa@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-21' },
-    { id: 7, name: 'David Brown', email: 'david@retail.com', role: 'auditee', company: 'Retail Solutions', status: 'active', lastLogin: '2024-02-18' }
-  ]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [modalData, setModalData] = useState({
+        show: false,
+        title: '',
+        items: []
+    });
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [showDetail, setShowDetail] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    role: 'auditee',
-    company: '',
-    password: ''
-  });
+    // Data users
+    const [users] = useState([
+        { id: 1, name: 'John Smith', email: 'john@techcorp.com', role: 'auditee', company: 'Tech Corp', status: 'active', lastLogin: '2024-02-20' },
+        { id: 2, name: 'Sarah Johnson', email: 'sarah@finance.com', role: 'auditee', company: 'Finance Ltd', status: 'active', lastLogin: '2024-02-19' },
+        { id: 3, name: 'Dr. Robert Wilson', email: 'robert@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-21' },
+        { id: 4, name: 'Lisa Anderson', email: 'lisa@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-20' },
+        { id: 5, name: 'Michael Chen', email: 'michael@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-19' },
+        { id: 6, name: 'Emily Davis', email: 'emily@healthcare.com', role: 'auditee', company: 'HealthCare Inc', status: 'inactive', lastLogin: '2024-02-01' },
+        { id: 7, name: 'David Brown', email: 'david@retail.com', role: 'auditee', company: 'Retail Solutions', status: 'active', lastLogin: '2024-02-18' }
+    ]);
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterRole === 'all' || user.role === filterRole;
-    return matchesSearch && matchesFilter;
-  });
-
-  const handleAddUser = () => {
-    const newId = users.length + 1;
-    const userToAdd = {
-      id: newId,
-      ...newUser,
-      status: 'active',
-      lastLogin: '-'
+    // Stats
+    const stats = {
+        total: users.length,
+        auditors: users.filter(u => u.role === 'auditor').length,
+        auditees: users.filter(u => u.role === 'auditee').length,
+        active: users.filter(u => u.status === 'active').length
     };
-    setUsers([...users, userToAdd]);
-    setShowAddModal(false);
-    setNewUser({ name: '', email: '', role: 'auditee', company: '', password: '' });
-  };
 
-  const handleDeleteUser = (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(u => u.id !== id));
-    }
-  };
+    // Filter
+    const filteredUsers = users.filter(u => 
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const handleResetPassword = (email) => {
-    alert(`Password reset link sent to ${email}`);
-  };
+    // Handle klik stats
+    const handleStatClick = (type) => {
+        let title = '';
+        let items = [];
+        if (type === 'total') {
+            title = 'All Users';
+            items = users;
+        } else if (type === 'auditors') {
+            title = 'Auditors';
+            items = users.filter(u => u.role === 'auditor');
+        } else if (type === 'auditees') {
+            title = 'Auditees';
+            items = users.filter(u => u.role === 'auditee');
+        } else if (type === 'active') {
+            title = 'Active Users';
+            items = users.filter(u => u.status === 'active');
+        }
+        setModalData({ show: true, title, items });
+    };
 
-  const handleToggleStatus = (id) => {
-    setUsers(users.map(user => 
-      user.id === id 
-        ? {...user, status: user.status === 'active' ? 'inactive' : 'active'}
-        : user
-    ));
-  };
+    // Handle klik baris
+    const handleRowClick = (user) => {
+        setSelectedUser(user);
+        setShowDetail(true);
+    };
 
-  return (
-    <DashboardLayout role="admin">
-      <div className="admin-page">
-        {/* Header */}
-        <div className="page-header">
-          <div>
-            <h2><FaUsers /> Users Management</h2>
-            <p>Manage all users across the platform</p>
-          </div>
-          <div className="header-actions">
-            <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-              <FaPlus /> Add User
-            </button>
-          </div>
-        </div>
+    // Handle delete
+    const handleDelete = (id, e) => {
+        e.stopPropagation();
+        if (window.confirm('Delete this user?')) {
+            // Implement delete logic here
+            alert('User deleted (demo)');
+        }
+    };
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon blue">
-              <FaUsers />
-            </div>
-            <div className="stat-content">
-              <h3>{users.length}</h3>
-              <p>Total Users</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon purple">
-              <FaUserTie />
-            </div>
-            <div className="stat-content">
-              <h3>{users.filter(u => u.role === 'auditor').length}</h3>
-              <p>Auditors</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon green">
-              <FaUserCheck />
-            </div>
-            <div className="stat-content">
-              <h3>{users.filter(u => u.role === 'auditee').length}</h3>
-              <p>Auditees</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon orange">
-              <FaUsers />
-            </div>
-            <div className="stat-content">
-              <h3>{users.filter(u => u.status === 'active').length}</h3>
-              <p>Active</p>
-            </div>
-          </div>
-        </div>
+    // Handle edit
+    const handleEdit = (user, e) => {
+        e.stopPropagation();
+        alert(`Edit user: ${user.name} (demo)`);
+    };
 
-        {/* Search & Filter */}
-        <div className="search-filter-bar">
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="filter-box">
-            <FaFilter className="filter-icon" />
-            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-              <option value="all">All Roles</option>
-              <option value="auditor">Auditor</option>
-              <option value="auditee">Auditee</option>
-            </select>
-          </div>
-        </div>
+    // Modal Detail
+    const DetailModal = () => {
+        if (!showDetail || !selectedUser) return null;
 
-        {/* Users Table */}
-        <div className="table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Name <FaSort className="sort-icon" /></th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Company</th>
-                <th>Status</th>
-                <th>Last Login</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map(user => (
-                <tr key={user.id}>
-                  <td><strong>{user.name}</strong></td>
-                  <td>{user.email}</td>
-                  <td>
-                    <span className={`role-badge ${user.role}`}>
-                      {user.role === 'auditor' ? <FaUserTie /> : <FaUserCheck />}
-                      <span>{user.role}</span>
-                    </span>
-                  </td>
-                  <td>{user.company}</td>
-                  <td>
-                    <span className={`status-badge ${user.status}`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td>{user.lastLogin}</td>
-                  <td>
-                    <button className="icon-btn" title="View"><FaEye /></button>
-                    <button className="icon-btn" title="Edit"><FaEdit /></button>
-                    <button className="icon-btn" title="Reset Password" onClick={() => handleResetPassword(user.email)}><FaKey /></button>
-                    <button className="icon-btn" title="Toggle Status" onClick={() => handleToggleStatus(user.id)}><FaBan /></button>
-                    <button className="icon-btn" title="Delete" onClick={() => handleDeleteUser(user.id)}><FaTrash /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Add User Modal */}
-        {showAddModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>Add New User</h3>
-              <form onSubmit={(e) => { e.preventDefault(); handleAddUser(); }}>
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                  />
+        return (
+            <div className="modal-overlay" onClick={() => setShowDetail(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaUsers /> {selectedUser.name}</h3>
+                        <button className="close-btn" onClick={() => setShowDetail(false)}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        <div className="detail-row"><label>Email:</label> {selectedUser.email}</div>
+                        <div className="detail-row"><label>Role:</label> {selectedUser.role}</div>
+                        <div className="detail-row"><label>Company:</label> {selectedUser.company}</div>
+                        <div className="detail-row"><label>Status:</label> 
+                            <span className={`status-badge ${selectedUser.status}`}>{selectedUser.status}</span>
+                        </div>
+                        <div className="detail-row"><label>Last Login:</label> {selectedUser.lastLogin}</div>
+                    </div>
                 </div>
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Role</label>
-                  <select
-                    value={newUser.role}
-                    onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                  >
-                    <option value="auditee">Auditee (Company)</option>
-                    <option value="auditor">Auditor</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Company</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUser.company}
-                    onChange={(e) => setNewUser({...newUser, company: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Temporary Password</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                  <button type="submit" className="btn-primary">Add User</button>
-                </div>
-              </form>
             </div>
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
-  );
+        );
+    };
+
+    // Modal Stats
+    const StatsModal = () => {
+        if (!modalData.show) return null;
+
+        return (
+            <div className="modal-overlay" onClick={() => setModalData({...modalData, show: false})}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3>{modalData.title}</h3>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        <table className="detail-table">
+                            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+                            <tbody>
+                                {modalData.items.map(u => (
+                                    <tr key={u.id} onClick={() => { setModalData({...modalData, show: false}); handleRowClick(u); }} className="clickable-row">
+                                        <td>{u.name}</td>
+                                        <td>{u.email}</td>
+                                        <td>{u.role}</td>
+                                        <td><span className={`status-badge ${u.status}`}>{u.status}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <DashboardLayout role="admin">
+            <div className="admin-page">
+                {/* Header - TANPA BUTTON ADD USER */}
+                <div className="page-header">
+                    <div>
+                        <h2><FaUsers /> Users Management</h2>
+                        <p>Manage all users across the platform</p>
+                    </div>
+                </div>
+
+                {/* Stats Cards - BISA DI KLIK */}
+                <div className="stats-grid">
+                    <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
+                        <div className="stat-icon blue"><FaUsers /></div>
+                        <h3>{stats.total}</h3>
+                        <p>Total Users</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('auditors')}>
+                        <div className="stat-icon purple"><FaUserTie /></div>
+                        <h3>{stats.auditors}</h3>
+                        <p>Auditors</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('auditees')}>
+                        <div className="stat-icon green"><FaUserCheck /></div>
+                        <h3>{stats.auditees}</h3>
+                        <p>Auditees</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('active')}>
+                        <div className="stat-icon teal"><FaCheckCircle /></div>
+                        <h3>{stats.active}</h3>
+                        <p>Active</p>
+                    </div>
+                </div>
+
+                {/* Search */}
+                <div className="search-bar">
+                    <FaSearch className="search-icon" />
+                    <input 
+                        placeholder="Search users by name or email..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                    />
+                </div>
+
+                {/* Table */}
+                <div className="table-container">
+                    <table className="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Company</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredUsers.map(u => (
+                                <tr key={u.id} className="clickable-row" onClick={() => handleRowClick(u)}>
+                                    <td><strong>{u.name}</strong></td>
+                                    <td>{u.email}</td>
+                                    <td>{u.role}</td>
+                                    <td>{u.company}</td>
+                                    <td>
+                                        <span className={`status-badge ${u.status}`}>
+                                            {u.status}
+                                        </span>
+                                    </td>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                        <button className="icon-btn" onClick={(e) => handleEdit(u, e)} title="Edit">
+                                            <FaEdit />
+                                        </button>
+                                        <button className="icon-btn" onClick={(e) => handleDelete(u.id, e)} title="Delete">
+                                            <FaTrash />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <StatsModal />
+                <DetailModal />
+            </div>
+        </DashboardLayout>
+    );
 };
 
 export default AdminUsers;

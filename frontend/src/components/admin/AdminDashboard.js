@@ -20,7 +20,8 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaFileAlt,
-  FaBell
+  FaBell,
+  FaTimes
 } from 'react-icons/fa';
 import './Admin.css';
 
@@ -71,6 +72,138 @@ const AdminDashboard = () => {
     { id: 3, name: 'Michael Chen', completed: 6, rating: 4.7 }
   ];
 
+  // Compliance by company
+  const complianceByCompany = [
+    { company: 'Tech Corp', compliance: 82, status: 'Good', change: '+5%' },
+    { company: 'Finance Ltd', compliance: 64, status: 'Average', change: '-2%' },
+    { company: 'HealthCare Inc', compliance: 45, status: 'Poor', change: '+3%' },
+    { company: 'EduGlobal', compliance: 91, status: 'Excellent', change: '+8%' },
+    { company: 'Retail Solutions', compliance: 38, status: 'Critical', change: '-5%' }
+  ];
+
+  // ========== STATE UNTUK MODAL ==========
+  const [modalData, setModalData] = useState({
+    show: false,
+    title: '',
+    items: []
+  });
+
+  // ========== DATA DETAIL UNTUK SETIAP STAT ==========
+  const getDetailData = (type) => {
+    switch(type) {
+      case 'companies':
+        return {
+          title: 'Companies Overview',
+          items: recentCompanies
+        };
+      case 'users':
+        return {
+          title: 'Users Overview',
+          items: [
+            { id: 1, name: 'John Smith', email: 'john@techcorp.com', role: 'auditee', status: 'active' },
+            { id: 2, name: 'Sarah Johnson', email: 'sarah@finance.com', role: 'auditee', status: 'active' },
+            { id: 3, name: 'Dr. Robert Wilson', email: 'robert@cyber.com', role: 'auditor', status: 'active' },
+            { id: 4, name: 'Lisa Anderson', email: 'lisa@cyber.com', role: 'auditor', status: 'active' },
+            { id: 5, name: 'Michael Chen', email: 'michael@cyber.com', role: 'auditor', status: 'active' }
+          ]
+        };
+      case 'auditors':
+        return {
+          title: 'Auditors Overview',
+          items: topAuditors
+        };
+      case 'audits':
+        return {
+          title: 'Active Audits',
+          items: upcomingAudits
+        };
+      case 'critical':
+        return {
+          title: 'Critical Findings',
+          items: [
+            { id: 1, finding: 'SQL Injection', company: 'Tech Corp', asset: 'Web Server', severity: 'Critical' },
+            { id: 2, finding: 'Missing HTTPS', company: 'Finance Ltd', asset: 'API Gateway', severity: 'Critical' }
+          ]
+        };
+      case 'high':
+        return {
+          title: 'High Findings',
+          items: [
+            { id: 1, finding: 'Weak Password Policy', company: 'Finance Ltd', asset: 'HR System', severity: 'High' },
+            { id: 2, finding: 'Default Credentials', company: 'HealthCare Inc', asset: 'Database', severity: 'High' }
+          ]
+        };
+      case 'completed':
+        return {
+          title: 'Completed Audits',
+          items: [
+            { id: 1, company: 'Retail Solutions', completed: '2024-02-15', findings: 12 },
+            { id: 2, company: 'Tech Corp', completed: '2024-02-10', findings: 8 }
+          ]
+        };
+      case 'compliance':
+        return {
+          title: 'Compliance Overview',
+          items: complianceByCompany
+        };
+      default:
+        return { title: '', items: [] };
+    }
+  };
+
+  // ========== HANDLE KLIK STATS ==========
+  const handleStatClick = (type) => {
+    const data = getDetailData(type);
+    setModalData({
+      show: true,
+      title: data.title,
+      items: data.items
+    });
+  };
+
+  // ========== MODAL COMPONENT ==========
+  const DetailModal = () => {
+    if (!modalData.show) return null;
+
+    return (
+      <div className="modal-overlay" onClick={() => setModalData({...modalData, show: false})}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{modalData.title}</h3>
+            <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>
+              <FaTimes />
+            </button>
+          </div>
+          
+          <div className="modal-body">
+            {modalData.items.length === 0 ? (
+              <p className="no-data">No data available</p>
+            ) : (
+              <table className="detail-table">
+                <thead>
+                  <tr>
+                    {Object.keys(modalData.items[0]).map(key => (
+                      <th key={key}>{key.toUpperCase()}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalData.items.map((item, idx) => (
+                    <tr key={idx}>
+                      {Object.values(item).map((val, i) => (
+                        <td key={i}>{val}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout role="admin">
       <div className="admin-dashboard">
@@ -86,9 +219,9 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - SEKARANG BISA DI KLIK */}
         <div className="stats-grid">
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('companies')}>
             <div className="stat-icon blue">
               <FaBuilding />
             </div>
@@ -101,7 +234,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('users')}>
             <div className="stat-icon green">
               <FaUsers />
             </div>
@@ -114,7 +247,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('auditors')}>
             <div className="stat-icon purple">
               <FaUserTie />
             </div>
@@ -127,7 +260,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('audits')}>
             <div className="stat-icon orange">
               <FaClipboardList />
             </div>
@@ -141,9 +274,9 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Second Row Stats */}
+        {/* Second Row Stats - SEKARANG BISA DI KLIK */}
         <div className="stats-grid secondary">
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('critical')}>
             <div className="stat-icon red">
               <FaExclamationTriangle />
             </div>
@@ -156,7 +289,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('high')}>
             <div className="stat-icon yellow">
               <FaExclamationTriangle />
             </div>
@@ -169,7 +302,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => handleStatClick('completed')}>
             <div className="stat-icon blue">
               <FaFileAlt />
             </div>
@@ -182,7 +315,8 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card">
+          {/* Avg Compliance - SEKARANG BISA DI KLIK */}
+          <div className="stat-card clickable" onClick={() => handleStatClick('compliance')}>
             <div className="stat-icon green">
               <FaCheckCircle />
             </div>
@@ -350,6 +484,9 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* MODAL DETAIL */}
+        <DetailModal />
       </div>
     </DashboardLayout>
   );

@@ -1,262 +1,329 @@
-// src/components/auditee/AuditeeDashboard.js
-
 import React, { useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
-  FaBuilding, 
-  FaServer, 
-  FaUpload,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaClock,
-  FaFileAlt,
-  FaArrowUp,
-  FaArrowDown,
-  FaSearch,
-  FaBell,
-  FaShieldAlt,
-  FaChartBar
+    FaServer, FaUpload, FaExclamationTriangle,
+    FaShieldAlt, FaArrowUp, FaSearch,
+    FaBell, FaFileAlt, FaDownload,
+    FaBuilding, FaUser, FaClock, FaChartBar
 } from 'react-icons/fa';
 import './Auditee.css';
 
 const AuditeeDashboard = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [modalData, setModalData] = useState({
+        show: false,
+        title: '',
+        items: []
+    });
 
-  // Stats data
-  const stats = {
-    totalAssets: 24,
-    pendingEvidence: 5,
-    openFindings: 3,
-    complianceRate: 72,
-    criticalFindings: 1,
-    highFindings: 2,
-    mediumFindings: 3,
-    lowFindings: 4
-  };
+    // Stats
+    const stats = {
+        totalAssets: 24,
+        pendingEvidence: 5,
+        openFindings: 3,
+        complianceRate: 72,
+        criticalFindings: 1,
+        highFindings: 2,
+        completedAudits: 4
+    };
 
-  // Recent activities
-  const recentActivities = [
-    { id: 1, action: 'Evidence uploaded', item: 'Password Policy Document', time: '2 hours ago', status: 'completed' },
-    { id: 2, action: 'New finding reported', item: 'SQL Injection vulnerability', time: '1 day ago', status: 'warning' },
-    { id: 3, action: 'Audit scheduled', item: 'Security Audit - Q1 2024', time: '2 days ago', status: 'info' },
-    { id: 4, action: 'Finding resolved', item: 'Weak password policy', time: '3 days ago', status: 'success' }
-  ];
+    // Assets
+    const assets = [
+        { id: 1, name: 'Web Server', type: 'Server', owner: 'IT Dept', cia: 'High', criticality: 8.5 },
+        { id: 2, name: 'Customer Database', type: 'Database', owner: 'IT Dept', cia: 'Critical', criticality: 9.2 },
+        { id: 3, name: 'HR Application', type: 'Application', owner: 'HR Dept', cia: 'Medium', criticality: 6.8 },
+        { id: 4, name: 'Firewall', type: 'Network', owner: 'IT Dept', cia: 'High', criticality: 8.0 }
+    ];
 
-  // Upcoming deadlines
-  const deadlines = [
-    { id: 1, task: 'Upload Firewall Configuration', due: '2024-03-01', daysLeft: 3, priority: 'high' },
-    { id: 2, task: 'Submit Access Control List', due: '2024-03-03', daysLeft: 5, priority: 'medium' },
-    { id: 3, task: 'Complete Self-Assessment', due: '2024-02-28', daysLeft: 1, priority: 'critical' }
-  ];
+    // Evidence
+    const evidence = [
+        { control: 'Password Policy', asset: 'HR System', due: '2024-03-01', status: 'pending' },
+        { control: 'Backup Procedure', asset: 'Database', due: '2024-03-03', status: 'uploaded' },
+        { control: 'Access Control List', asset: 'File Server', due: '2024-02-28', status: 'overdue' }
+    ];
 
-  return (
-    <DashboardLayout role="auditee">
-      <div className="auditee-dashboard">
-        {/* Header with Search */}
-        <div className="dashboard-header">
-          <div>
-            <h1>Company Dashboard</h1>
-            <p>Welcome back! Manage your assets and audit evidence.</p>
-          </div>
-          <div className="header-search">
-            <FaSearch className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search assets, evidence..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+    // Findings
+    const findings = [
+        { title: 'SQL Injection', asset: 'Web Server', severity: 'critical', status: 'open' },
+        { title: 'Weak Password', asset: 'HR System', severity: 'high', status: 'in-progress' },
+        { title: 'Missing HTTPS', asset: 'API Gateway', severity: 'critical', status: 'open' }
+    ];
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon blue">
-              <FaServer />
-            </div>
-            <div className="stat-content">
-              <h3>{stats.totalAssets}</h3>
-              <p>Total Assets</p>
-            </div>
-            <div className="stat-trend up">
-              <FaArrowUp /> +3
-            </div>
-          </div>
+    // NIST Scores
+    const nistScores = {
+        identify: 68,
+        protect: 72,
+        detect: 45,
+        respond: 80,
+        recover: 55
+    };
 
-          <div className="stat-card">
-            <div className="stat-icon orange">
-              <FaUpload />
-            </div>
-            <div className="stat-content">
-              <h3>{stats.pendingEvidence}</h3>
-              <p>Evidence Pending</p>
-            </div>
-            <div className="stat-trend down">
-              <FaArrowDown /> -2
-            </div>
-          </div>
+    // Compliance breakdown data
+    const complianceBreakdown = [
+        { function: 'Identify', score: 68, status: 'Good', controls: '12/18 compliant' },
+        { function: 'Protect', score: 72, status: 'Good', controls: '18/25 compliant' },
+        { function: 'Detect', score: 45, status: 'Needs Improvement', controls: '9/20 compliant' },
+        { function: 'Respond', score: 80, status: 'Excellent', controls: '12/15 compliant' },
+        { function: 'Recover', score: 55, status: 'Fair', controls: '8/15 compliant' }
+    ];
 
-          <div className="stat-card">
-            <div className="stat-icon red">
-              <FaExclamationTriangle />
-            </div>
-            <div className="stat-content">
-              <h3>{stats.openFindings}</h3>
-              <p>Open Findings</p>
-            </div>
-            <div className="stat-trend">
-              {stats.criticalFindings} critical
-            </div>
-          </div>
+    const handleStatClick = (type) => {
+        let items = [];
+        let title = '';
 
-          <div className="stat-card">
-            <div className="stat-icon green">
-              <FaShieldAlt />
-            </div>
-            <div className="stat-content">
-              <h3>{stats.complianceRate}%</h3>
-              <p>Compliance Rate</p>
-            </div>
-            <div className="stat-trend up">
-              <FaArrowUp /> +5%
-            </div>
-          </div>
-        </div>
+        switch(type) {
+            case 'assets': 
+                items = assets; 
+                title = 'Asset Inventory'; 
+                break;
+            case 'evidence': 
+                items = evidence; 
+                title = 'Evidence Required'; 
+                break;
+            case 'findings': 
+                items = findings; 
+                title = 'Audit Findings'; 
+                break;
+            case 'compliance':
+                items = complianceBreakdown;
+                title = 'Compliance Breakdown by NIST CSF';
+                break;
+            default:
+                return;
+        }
 
-        {/* Main Grid */}
-        <div className="dashboard-grid">
-          {/* NIST CSF Compliance Overview */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3><FaChartBar /> NIST CSF Compliance</h3>
-              <a href="/auditee/reports" className="view-all">View Report →</a>
-            </div>
-            <div className="compliance-bars">
-              <div className="compliance-item">
-                <span className="compliance-label">Identify</span>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '68%'}}></div>
+        setModalData({ show: true, title, items });
+    };
+
+    const DetailModal = () => {
+        if (!modalData.show) return null;
+        return (
+            <div className="modal-overlay" onClick={() => setModalData({...modalData, show: false})}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3>{modalData.title}</h3>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        {modalData.items.length === 0 ? (
+                            <p className="no-data">No data available</p>
+                        ) : (
+                            <table className="detail-table">
+                                <thead>
+                                    <tr>
+                                        {Object.keys(modalData.items[0]).map(k => (
+                                            <th key={k}>{k.toUpperCase()}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {modalData.items.map((item, i) => (
+                                        <tr key={i}>
+                                            {Object.values(item).map((v, j) => (
+                                                <td key={j}>
+                                                    {typeof v === 'number' && v < 60 ? (
+                                                        <span style={{ color: '#b91c1c', fontWeight: 600 }}>{v}%</span>
+                                                    ) : typeof v === 'number' && v > 80 ? (
+                                                        <span style={{ color: '#166534', fontWeight: 600 }}>{v}%</span>
+                                                    ) : (
+                                                        v
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
                 </div>
-                <span className="compliance-value">68%</span>
-              </div>
-              <div className="compliance-item">
-                <span className="compliance-label">Protect</span>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '72%'}}></div>
-                </div>
-                <span className="compliance-value">72%</span>
-              </div>
-              <div className="compliance-item">
-                <span className="compliance-label">Detect</span>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '45%'}}></div>
-                </div>
-                <span className="compliance-value">45%</span>
-              </div>
-              <div className="compliance-item">
-                <span className="compliance-label">Respond</span>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '80%'}}></div>
-                </div>
-                <span className="compliance-value">80%</span>
-              </div>
-              <div className="compliance-item">
-                <span className="compliance-label">Recover</span>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '55%'}}></div>
-                </div>
-                <span className="compliance-value">55%</span>
-              </div>
             </div>
-          </div>
+        );
+    };
 
-          {/* Upcoming Deadlines */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3><FaClock /> Upcoming Deadlines</h3>
-              <a href="/auditee/evidence" className="view-all">View All →</a>
-            </div>
-            <div className="deadline-list">
-              {deadlines.map(deadline => (
-                <div key={deadline.id} className="deadline-item">
-                  <div className="deadline-info">
-                    <h4>{deadline.task}</h4>
-                    <p>Due: {deadline.due}</p>
-                  </div>
-                  <div className="deadline-meta">
-                    <span className={`priority-badge ${deadline.priority}`}>
-                      {deadline.daysLeft} days left
-                    </span>
-                  </div>
+    return (
+        <DashboardLayout role="auditee">
+            <div className="auditee-dashboard" style={{ padding: '24px' }}>
+                {/* Header */}
+                <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Company Dashboard</h1>
+                        <p style={{ color: '#64748b', fontSize: '14px' }}>Manage your assets and audit evidence</p>
+                    </div>
+                    <div className="header-search" style={{ position: 'relative', width: '300px' }}>
+                        <FaSearch className="search-icon" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                        <input 
+                            placeholder="Search assets, evidence..." 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%', padding: '10px 10px 10px 40px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px' }}
+                        />
+                    </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Second Grid */}
-        <div className="dashboard-grid">
-          {/* Recent Activities */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3><FaBell /> Recent Activities</h3>
-            </div>
-            <div className="activity-list">
-              {recentActivities.map(activity => (
-                <div key={activity.id} className="activity-item">
-                  <div className={`activity-icon ${activity.status}`}></div>
-                  <div className="activity-content">
-                    <h4>{activity.action}</h4>
-                    <p>{activity.item}</p>
-                  </div>
-                  <div className="activity-time">{activity.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+                {/* Stats - COMPLIANCE RATE SEKARANG BISA DI KLIK */}
+                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('assets')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
+                        <div className="stat-icon blue" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#e8f0fe', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
+                            <FaServer />
+                        </div>
+                        <div className="stat-content">
+                            <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.totalAssets}</h3>
+                            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Total Assets</p>
+                        </div>
+                        <div className="stat-trend up" style={{ position: 'absolute', top: '20px', right: '20px', fontSize: '12px', padding: '4px 8px', borderRadius: '20px', background: '#e6f7e6', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FaArrowUp /> +3
+                        </div>
+                    </div>
 
-          {/* Findings Summary */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3><FaExclamationTriangle /> Findings by Severity</h3>
-              <a href="/auditee/findings" className="view-all">View All →</a>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('evidence')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
+                        <div className="stat-icon orange" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fff1e6', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
+                            <FaUpload />
+                        </div>
+                        <div className="stat-content">
+                            <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.pendingEvidence}</h3>
+                            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Evidence Pending</p>
+                        </div>
+                    </div>
+
+                    <div className="stat-card clickable" onClick={() => handleStatClick('findings')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
+                        <div className="stat-icon red" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fee8e8', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
+                            <FaExclamationTriangle />
+                        </div>
+                        <div className="stat-content">
+                            <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.openFindings}</h3>
+                            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Open Findings</p>
+                        </div>
+                    </div>
+
+                    {/* COMPLIANCE RATE - SEKARANG BISA DI KLIK */}
+                    <div className="stat-card clickable" onClick={() => handleStatClick('compliance')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
+                        <div className="stat-icon green" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#e6f7e6', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
+                            <FaShieldAlt />
+                        </div>
+                        <div className="stat-content">
+                            <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.complianceRate}%</h3>
+                            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Compliance Rate</p>
+                        </div>
+                        <div className="stat-trend up" style={{ position: 'absolute', top: '20px', right: '20px', fontSize: '12px', padding: '4px 8px', borderRadius: '20px', background: '#e6f7e6', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FaArrowUp /> +5%
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Grid - Assets List & NIST CSF */}
+                <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                    {/* Assets List */}
+                    <div className="dashboard-card" style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6' }}>
+                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaServer /> Asset Inventory
+                            </h3>
+                            <a href="/auditee/assets" className="view-all" style={{ color: '#1e293b', textDecoration: 'none', fontSize: '13px' }}>View All →</a>
+                        </div>
+                        {assets.map(a => (
+                            <div key={a.id} className="asset-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <div className="asset-info">
+                                    <h4 style={{ fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '4px' }}>{a.name}</h4>
+                                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>{a.type} · {a.owner}</p>
+                                </div>
+                                <div className="asset-meta" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <span className={`cia-badge ${a.cia.toLowerCase()}`} style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, background: a.cia === 'Critical' ? '#fee8e8' : a.cia === 'High' ? '#fff1e6' : '#e6f7e6', color: a.cia === 'Critical' ? '#b91c1c' : a.cia === 'High' ? '#b45309' : '#166534' }}>{a.cia}</span>
+                                    <span className="criticality" style={{ fontWeight: 600, color: '#1e293b' }}>{a.criticality}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* NIST CSF Compliance */}
+                    <div className="dashboard-card" style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6' }}>
+                        <div className="card-header" style={{ marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaShieldAlt /> NIST CSF Compliance
+                            </h3>
+                        </div>
+                        <div className="nist-scores">
+                            {Object.entries(nistScores).map(([key, value]) => (
+                                <div key={key} className="nist-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                    <span className="nist-label" style={{ width: '70px', fontSize: '13px', color: '#64748b', textTransform: 'capitalize' }}>{key}</span>
+                                    <div className="progress-bar" style={{ flex: 1, height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div className="progress-fill" style={{ width: `${value}%`, height: '100%', background: '#1e293b', borderRadius: '4px' }}></div>
+                                    </div>
+                                    <span className="nist-value" style={{ width: '45px', fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{value}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Second Grid - Evidence & Findings */}
+                <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                    {/* Evidence List */}
+                    <div className="dashboard-card" style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6' }}>
+                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaUpload /> Evidence Required
+                            </h3>
+                            <a href="/auditee/evidence" className="view-all" style={{ color: '#1e293b', textDecoration: 'none', fontSize: '13px' }}>View All →</a>
+                        </div>
+                        {evidence.map((e, i) => (
+                            <div key={i} className="evidence-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <div className="evidence-info">
+                                    <h4 style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b', marginBottom: '2px' }}>{e.control}</h4>
+                                    <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>{e.asset} · Due: {e.due}</p>
+                                </div>
+                                <span className={`status-badge ${e.status}`} style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, background: e.status === 'uploaded' ? '#e6f7e6' : e.status === 'overdue' ? '#fee8e8' : '#f1f5f9', color: e.status === 'uploaded' ? '#166534' : e.status === 'overdue' ? '#b91c1c' : '#64748b' }}>{e.status}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Findings List */}
+                    <div className="dashboard-card" style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6' }}>
+                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaExclamationTriangle /> Recent Findings
+                            </h3>
+                            <a href="/auditee/findings" className="view-all" style={{ color: '#1e293b', textDecoration: 'none', fontSize: '13px' }}>View All →</a>
+                        </div>
+                        {findings.map((f, i) => (
+                            <div key={i} className="finding-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <div className="finding-info">
+                                    <h4 style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b', marginBottom: '2px' }}>{f.title}</h4>
+                                    <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>{f.asset}</p>
+                                </div>
+                                <div className="finding-meta" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <span className={`severity-badge ${f.severity}`} style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: f.severity === 'critical' ? '#fee8e8' : '#fff1e6', color: f.severity === 'critical' ? '#b91c1c' : '#b45309' }}>{f.severity}</span>
+                                    <span className={`status-badge ${f.status}`} style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, background: f.status === 'closed' ? '#e6f7e6' : f.status === 'in-progress' ? '#fff1e6' : '#fee8e8', color: f.status === 'closed' ? '#166534' : f.status === 'in-progress' ? '#b45309' : '#b91c1c' }}>{f.status}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginTop: '24px' }}>
+                    <button className="quick-action-btn" onClick={() => window.location.href = '/auditee/assets'} style={{ padding: '20px', background: 'white', border: '1px solid #eef2f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <FaServer style={{ fontSize: '24px', color: '#1e293b' }} />
+                        <span style={{ fontSize: '12px', color: '#1e293b' }}>Add Asset</span>
+                    </button>
+                    <button className="quick-action-btn" onClick={() => window.location.href = '/auditee/evidence'} style={{ padding: '20px', background: 'white', border: '1px solid #eef2f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <FaUpload style={{ fontSize: '24px', color: '#1e293b' }} />
+                        <span style={{ fontSize: '12px', color: '#1e293b' }}>Upload Evidence</span>
+                    </button>
+                    <button className="quick-action-btn" onClick={() => window.location.href = '/auditee/reports'} style={{ padding: '20px', background: 'white', border: '1px solid #eef2f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <FaFileAlt style={{ fontSize: '24px', color: '#1e293b' }} />
+                        <span style={{ fontSize: '12px', color: '#1e293b' }}>View Report</span>
+                    </button>
+                    <button className="quick-action-btn" onClick={() => window.location.href = '/auditee/findings'} style={{ padding: '20px', background: 'white', border: '1px solid #eef2f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <FaDownload style={{ fontSize: '24px', color: '#1e293b' }} />
+                        <span style={{ fontSize: '12px', color: '#1e293b' }}>Export Data</span>
+                    </button>
+                </div>
+
+                <DetailModal />
             </div>
-            <div className="findings-summary">
-              <div className="finding-stat">
-                <span className="finding-label">Critical</span>
-                <span className="finding-value">{stats.criticalFindings}</span>
-                <div className="progress-bar">
-                  <div className="progress-fill critical" style={{width: '20%'}}></div>
-                </div>
-              </div>
-              <div className="finding-stat">
-                <span className="finding-label">High</span>
-                <span className="finding-value">{stats.highFindings}</span>
-                <div className="progress-bar">
-                  <div className="progress-fill high" style={{width: '30%'}}></div>
-                </div>
-              </div>
-              <div className="finding-stat">
-                <span className="finding-label">Medium</span>
-                <span className="finding-value">{stats.mediumFindings}</span>
-                <div className="progress-bar">
-                  <div className="progress-fill medium" style={{width: '25%'}}></div>
-                </div>
-              </div>
-              <div className="finding-stat">
-                <span className="finding-label">Low</span>
-                <span className="finding-value">{stats.lowFindings}</span>
-                <div className="progress-bar">
-                  <div className="progress-fill low" style={{width: '25%'}}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+        </DashboardLayout>
+    );
 };
 
 export default AuditeeDashboard;
