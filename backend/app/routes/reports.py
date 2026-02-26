@@ -1,12 +1,12 @@
 # backend/app/routes/reports.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime, timedelta
+from typing import List, Optional
+from datetime import datetime, date
 
-from ..models import SessionLocal, Audit, Finding, Company, User
-from .auth import get_current_user
+from ..models import SessionLocal, Company, Asset, Finding, Evidence
+from .auth import get_current_user_dependency
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -17,95 +17,106 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/compliance")
-async def get_compliance_report(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    # Get all companies
-    companies = db.query(Company).all()
+@router.get("/company/{company_id}/summary")
+async def get_company_report_summary(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get summary report for a company"""
+    # Get company data
+    company = db.query(Company).filter(Company.id == company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
     
-    report_data = []
-    for company in companies:
-        findings = db.query(Finding).filter(Finding.company_id == company.id).all()
-        total_findings = len(findings)
-        critical = len([f for f in findings if f.severity == 'critical'])
-        high = len([f for f in findings if f.severity == 'high'])
-        medium = len([f for f in findings if f.severity == 'medium'])
-        low = len([f for f in findings if f.severity == 'low'])
-        
-        # Simple compliance calculation (mock)
-        compliance = 100 - (total_findings * 2)
-        if compliance < 0:
-            compliance = 0
-        
-        report_data.append({
-            "company": company.name,
-            "compliance": compliance,
-            "findings": {
-                "critical": critical,
-                "high": high,
-                "medium": medium,
-                "low": low,
-                "total": total_findings
-            },
-            "last_audit": company.created_at.strftime("%Y-%m-%d")
-        })
+    # Get assets
+    assets = db.query(Asset).filter(Asset.company_id == company_id).all()
+    
+    # Get findings
+    findings = db.query(Finding).filter(Finding.company_id == company_id).all()
+    
+    # Get evidence
+    evidence = db.query(Evidence).filter(Evidence.company_id == company_id).all()
+    
+    # Calculate stats
+    total_findings = len(findings)
+    open_findings = len([f for f in findings if f.status == 'open'])
+    critical_findings = len([f for f in findings if f.severity == 'critical'])
+    
+    compliance_rate = round(((total_findings - open_findings) / (total_findings or 1)) * 100)
     
     return {
-        "report_name": "Compliance Report",
-        "generated": datetime.now().strftime("%Y-%m-%d"),
-        "total_companies": len(companies),
-        "average_compliance": sum([c["compliance"] for c in report_data]) / len(report_data) if report_data else 0,
-        "companies": report_data
+        "company": {
+            "id": company.id,
+            "name": company.name,
+            "sector": company.sector,
+            "exposure_level": company.exposure_level
+        },
+        "stats": {
+            "total_assets": len(assets),
+            "critical_assets": len([a for a in assets if a.cia == 'Critical']),
+            "total_findings": total_findings,
+            "open_findings": open_findings,
+            "critical_findings": critical_findings,
+            "compliance_rate": compliance_rate,
+            "evidence_uploaded": len([e for e in evidence if e.status == 'uploaded']),
+            "evidence_pending": len([e for e in evidence if e.status == 'pending'])
+        },
+        "generated_at": datetime.utcnow().isoformat()
     }
 
-@router.get("/findings-summary")
-async def get_findings_summary(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    findings = db.query(Finding).all()
+@router.get("/company/{company_id}/compliance")
+async def get_compliance_report(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get compliance report with NIST CSF mapping"""
+    findings = db.query(Finding).filter(Finding.company_id == company_id).all()
     
-    severity_counts = {
+    # Mock NIST CSF functions compliance
+    nist_functions = {
+        "Identify": 68,
+        "Protect": 72,
+        "Detect": 45,
+        "Respond": 80,
+        "Recover": 55
+    }
+    
+    return {
+        "company_id": company_id,
+        "nist_csf": nist_functions,
+        "overall_compliance": round(sum(nist_functions.values()) / len(nist_functions)),
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+@router.get("/company/{company_id}/findings")
+async def get_findings_report(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get detailed findings report"""
+    findings = db.query(Finding).filter(Finding.company_id == company_id).all()
+    
+    by_severity = {
         "critical": len([f for f in findings if f.severity == 'critical']),
         "high": len([f for f in findings if f.severity == 'high']),
         "medium": len([f for f in findings if f.severity == 'medium']),
         "low": len([f for f in findings if f.severity == 'low'])
     }
     
-    status_counts = {
+    by_status = {
         "open": len([f for f in findings if f.status == 'open']),
-        "in-progress": len([f for f in findings if f.status == 'in-progress']),
+        "in_progress": len([f for f in findings if f.status == 'in-progress']),
         "closed": len([f for f in findings if f.status == 'closed'])
     }
     
     return {
-        "report_name": "Findings Summary",
-        "generated": datetime.now().strftime("%Y-%m-%d"),
+        "company_id": company_id,
         "total_findings": len(findings),
-        "by_severity": severity_counts,
-        "by_status": status_counts
-    }
-
-@router.get("/auditor-performance")
-async def get_auditor_performance(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    from ..models import Auditor
-    
-    auditors = db.query(Auditor).all()
-    
-    performance_data = []
-    for auditor in auditors:
-        audits = db.query(Audit).filter(Audit.auditorId == auditor.id).all()
-        completed = len([a for a in audits if a.status == 'completed'])
-        in_progress = len([a for a in audits if a.status == 'in-progress'])
-        
-        performance_data.append({
-            "name": auditor.name,
-            "specialization": auditor.specialization,
-            "assigned": auditor.assigned,
-            "completed": completed,
-            "in_progress": in_progress,
-            "rating": float(auditor.rating),
-            "total_findings": sum([a.findings for a in audits])
-        })
-    
-    return {
-        "report_name": "Auditor Performance Report",
-        "generated": datetime.now().strftime("%Y-%m-%d"),
-        "auditors": performance_data
+        "by_severity": by_severity,
+        "by_status": by_status,
+        "findings": findings,
+        "generated_at": datetime.utcnow().isoformat()
     }

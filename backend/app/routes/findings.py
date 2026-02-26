@@ -1,114 +1,147 @@
-# app/routes/findings.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+
+
+# backend/app/routes/findings.py
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 
-from ..database import get_db
-from ..models import Finding, AuditResult, Asset
-from ..services.finding_generator import FindingGenerator
+from ..models import SessionLocal, Finding, Company, Asset
+from .auth import get_current_user_dependency
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/findings", tags=["Findings"])
 
-@router.get("/asset/{asset_id}")
-def get_asset_findings(
-    asset_id: int, 
-    status: Optional[str] = Query(None, description="Filter by status (Open, In Progress, Closed)"),
-    db: Session = Depends(get_db)
-):
-    """Get all findings for an asset, optionally filtered by status"""
-    query = db.query(Finding).filter(Finding.asset_id == asset_id)
-    if status:
-        query = query.filter(Finding.status == status)
-    return query.all()
+# Pydantic models
+class FindingBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    severity: str
+    asset: Optional[str] = None
+    asset_id: Optional[int] = None
+    recommendation: Optional[str] = None
+    due_date: Optional[date] = None
 
-@router.post("/generate/{asset_id}")
-def generate_findings(asset_id: int, db: Session = Depends(get_db)):
-    """Generate findings automatically from audit results"""
-    # Get non-compliant audit results
-    non_compliant = db.query(AuditResult).filter(
-        AuditResult.asset_id == asset_id,
-        AuditResult.status.in_(["Non-Compliant", "Partially Compliant"])
-    ).all()
+class FindingCreate(FindingBase):
+    company_id: int
+
+class FindingResponse(FindingBase):
+    id: int
+    company_id: int
+    status: str
+    discovered: date
+    progress: int
+    created_at: datetime
     
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+    class Config:
+        from_attributes = True
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.get("/", response_model=List[FindingResponse])
+async def get_all_findings(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get all findings (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
     
-    findings = []
-    for result in non_compliant:
-        finding_data = FindingGenerator.generate_from_audit(result, asset.name)
-        
-        # Simpan ke database
-        finding = Finding(
-            asset_id=asset_id,
-            title=finding_data['title'],
-            description=finding_data['description'],
-            risk_level=finding_data.get('severity', 'Medium'),
-            recommendation=finding_data['recommendation'],
-            status='Open'
-        )
-        db.add(finding)
-        findings.append(finding_data)
+    findings = db.query(Finding).all()
+    return findings
+
+@router.get("/company/{company_id}")
+async def get_findings_by_company(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get findings for a specific company"""
+    findings = db.query(Finding).filter(Finding.company_id == company_id).all()
+    return findings
+
+@router.post("/")
+async def create_finding(
+    finding: FindingCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Create new finding"""
+    new_finding = Finding(
+        company_id=finding.company_id,
+        title=finding.title,
+        description=finding.description,
+        severity=finding.severity,
+        asset=finding.asset,
+        asset_id=finding.asset_id,
+        recommendation=finding.recommendation,
+        due_date=finding.due_date,
+        status="open",
+        discovered=date.today(),
+        progress=0
+    )
     
+    db.add(new_finding)
     db.commit()
+    db.refresh(new_finding)
     
-    return {
-        "message": f"Generated {len(findings)} findings",
-        "count": len(findings),
-        "findings": findings
-    }
+    return new_finding
 
-@router.put("/{finding_id}/status")
-def update_finding_status(
-    finding_id: int, 
-    status: str = Query(..., regex="^(Open|In Progress|Closed)$"),
-    db: Session = Depends(get_db)
+@router.get("/{finding_id}")
+async def get_finding_by_id(
+    finding_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
 ):
-    """Update finding status (Open, In Progress, Closed)"""
+    """Get finding by ID"""
+
     finding = db.query(Finding).filter(Finding.id == finding_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
     
-    finding.status = status
-    db.commit()
+
+    return finding
+
+@router.put("/{finding_id}")
+async def update_finding(
+    finding_id: int,
+    finding_data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Update finding status/progress"""
+    finding = db.query(Finding).filter(Finding.id == finding_id).first()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
     
-    return {
-        "message": f"Finding status updated to {status}",
-        "finding_id": finding_id,
-        "status": status
-    }
+    for key, value in finding_data.items():
+        if hasattr(finding, key):
+            setattr(finding, key, value)
+    
+    db.commit()
+    db.refresh(finding)
+    
+    return finding
 
 @router.delete("/{finding_id}")
-def delete_finding(finding_id: int, db: Session = Depends(get_db)):
-    """Delete a finding"""
+async def delete_finding(
+    finding_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Delete finding"""
+
     finding = db.query(Finding).filter(Finding.id == finding_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
     
     db.delete(finding)
     db.commit()
-    return {"message": "Finding deleted successfully"}
 
-@router.get("/summary/{asset_id}")
-def get_findings_summary(asset_id: int, db: Session = Depends(get_db)):
-    """Get summary of findings by status and severity"""
-    from sqlalchemy import func
     
-    # Count by status
-    status_counts = db.query(
-        Finding.status, 
-        func.count(Finding.status).label('count')
-    ).filter(Finding.asset_id == asset_id).group_by(Finding.status).all()
-    
-    # Count by severity
-    severity_counts = db.query(
-        Finding.risk_level, 
-        func.count(Finding.risk_level).label('count')
-    ).filter(Finding.asset_id == asset_id).group_by(Finding.risk_level).all()
-    
-    return {
-        "by_status": {s: c for s, c in status_counts},
-        "by_severity": {s: c for s, c in severity_counts},
-        "total": sum(c for _, c in status_counts)
-    }
+    return {"success": True, "message": "Finding deleted"}

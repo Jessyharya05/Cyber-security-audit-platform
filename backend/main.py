@@ -1,17 +1,12 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Import dari app folder (struktur Dev A)
-from app.routes import auth, assets, evidence
+from app.routes import auth, users, companies, assets, evidence, audit, findings, reports
 from app.models import engine, Base
 
-# Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CyberGuard API", version="1.0")
 
-# CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -20,15 +15,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include all routes
-app.include_router(auth.router)      # Dari Dev A (auth)
-app.include_router(assets.router)    # Dari Dev A (assets) 
-app.include_router(evidence.router)  # Dari KAMU (evidence)
+# Include all routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(companies.router)
+app.include_router(assets.router)
+app.include_router(evidence.router)
+app.include_router(audit.router)
+app.include_router(findings.router)
+app.include_router(reports.router)
 
 @app.get("/")
 async def root():
-    return {"message": "CyberGuard API is running", "status": "OK"}
+    return {"message": "CyberGuard API is running"}
 
 @app.get("/health")
-async def health_check():
+async def health():
     return {"status": "healthy"}
