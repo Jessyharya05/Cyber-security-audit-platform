@@ -3,16 +3,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-# Import semua router
+# Import hanya router yang benar-benar ada
 from .routes import (
     auth_router,
     assets_router,
     audit_router,
     evidence_router,
     reports_router,
-    vulnerabilities_router,
-    risk_router,
-    checklist_router,
     findings_router
 )
 
@@ -32,15 +29,12 @@ def create_app():
         allow_headers=["*"],
     )
 
-    # Register routers - dengan prefix /api
+    # Register routers
     app.include_router(auth_router, prefix="/api")
     app.include_router(assets_router, prefix="/api")
     app.include_router(audit_router, prefix="/api")
     app.include_router(evidence_router, prefix="/api")
     app.include_router(reports_router, prefix="/api")
-    app.include_router(vulnerabilities_router, prefix="/api")
-    app.include_router(risk_router, prefix="/api")
-    app.include_router(checklist_router, prefix="/api")
     app.include_router(findings_router, prefix="/api")
 
     @app.get("/")
