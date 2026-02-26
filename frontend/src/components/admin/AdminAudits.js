@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+// ============================================
+// src/components/admin/AdminAudits.js (LANJUTAN)
+// ============================================
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
     FaClipboardList, FaSearch, FaPlus, FaEdit, FaTrash,
     FaEye, FaFilter, FaCalendarAlt, FaCheckCircle,
     FaClock, FaExclamationTriangle, FaUserTie,
-    FaBuilding, FaChartBar, FaCalendarCheck
+    FaBuilding, FaChartBar, FaCalendarCheck,
+    FaTimes
 } from 'react-icons/fa';
+import api from '../../services/api';
 import './Admin.css';
 
 const AdminAudits = () => {
+    const [loading, setLoading] = useState(true);
+    const [audits, setAudits] = useState([]);
+    const [companies, setCompanies] = useState([]);
+    const [auditors, setAuditors] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [modalData, setModalData] = useState({
@@ -19,101 +28,40 @@ const AdminAudits = () => {
     const [selectedAudit, setSelectedAudit] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [newAudit, setNewAudit] = useState({
+        companyId: '',
+        auditorId: '',
+        scope: '',
+        startDate: '',
+        endDate: '',
+        priority: 'medium'
+    });
 
-    // Data audits
-    const [audits, setAudits] = useState([
-        { 
-            id: 1, 
-            company: 'Tech Corp', 
-            auditor: 'Dr. Robert Wilson',
-            scope: 'Full Security Audit',
-            startDate: '2024-02-01',
-            endDate: '2024-02-28',
-            dueDate: '2024-02-28',
-            status: 'in-progress',
-            progress: 75,
-            findings: 8,
-            criticalFindings: 2
-        },
-        { 
-            id: 2, 
-            company: 'Finance Ltd', 
-            auditor: 'Lisa Anderson',
-            scope: 'Web Application Security',
-            startDate: '2024-02-05',
-            endDate: '2024-03-05',
-            dueDate: '2024-03-05',
-            status: 'in-progress',
-            progress: 30,
-            findings: 5,
-            criticalFindings: 1
-        },
-        { 
-            id: 3, 
-            company: 'HealthCare Inc', 
-            auditor: 'Michael Chen',
-            scope: 'Compliance Audit',
-            startDate: '2024-02-01',
-            endDate: '2024-02-28',
-            dueDate: '2024-02-28',
-            status: 'review',
-            progress: 90,
-            findings: 12,
-            criticalFindings: 3
-        },
-        { 
-            id: 4, 
-            company: 'EduGlobal', 
-            auditor: 'Sarah Williams',
-            scope: 'Network Security',
-            startDate: '2024-02-10',
-            endDate: '2024-03-10',
-            dueDate: '2024-03-10',
-            status: 'pending',
-            progress: 0,
-            findings: 0,
-            criticalFindings: 0
-        },
-        { 
-            id: 5, 
-            company: 'Retail Solutions', 
-            auditor: 'Dr. Robert Wilson',
-            scope: 'PCI DSS Compliance',
-            startDate: '2024-01-15',
-            endDate: '2024-02-15',
-            dueDate: '2024-02-15',
-            status: 'completed',
-            progress: 100,
-            findings: 15,
-            criticalFindings: 4
-        },
-        { 
-            id: 6, 
-            company: 'Bank Central', 
-            auditor: 'Lisa Anderson',
-            scope: 'Financial Systems Audit',
-            startDate: '2024-02-20',
-            endDate: '2024-03-20',
-            dueDate: '2024-03-20',
-            status: 'pending',
-            progress: 0,
-            findings: 0,
-            criticalFindings: 0
-        },
-        { 
-            id: 7, 
-            company: 'StartUp Tech', 
-            auditor: 'Michael Chen',
-            scope: 'Initial Security Audit',
-            startDate: '2024-02-25',
-            endDate: '2024-03-25',
-            dueDate: '2024-03-25',
-            status: 'pending',
-            progress: 0,
-            findings: 0,
-            criticalFindings: 0
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // Ambil semua audits
+            const auditsRes = await api.get('/audit/');
+            setAudits(auditsRes.data || []);
+            
+            // Ambil semua companies untuk dropdown
+            const companiesRes = await api.get('/companies/');
+            setCompanies(companiesRes.data || []);
+            
+            // Ambil semua auditors
+            const auditorsRes = await api.get('/users/?role=auditor');
+            setAuditors(auditorsRes.data || []);
+            
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
     // Hitung audits yang due this week
     const getDueThisWeek = () => {
@@ -122,7 +70,7 @@ const AdminAudits = () => {
         nextWeek.setDate(today.getDate() + 7);
         
         return audits.filter(audit => {
-            const dueDate = new Date(audit.dueDate);
+            const dueDate = new Date(audit.dueDate || audit.endDate);
             return dueDate >= today && dueDate <= nextWeek;
         });
     };
@@ -136,73 +84,81 @@ const AdminAudits = () => {
         completed: audits.filter(a => a.status === 'completed').length,
         pending: audits.filter(a => a.status === 'pending').length,
         review: audits.filter(a => a.status === 'review').length,
-        totalFindings: audits.reduce((sum, a) => sum + a.findings, 0),
-        criticalFindings: audits.reduce((sum, a) => sum + a.criticalFindings, 0),
+        totalFindings: audits.reduce((sum, a) => sum + (a.findings || 0), 0),
+        criticalFindings: audits.reduce((sum, a) => sum + (a.criticalFindings || 0), 0),
         dueThisWeek: dueThisWeek.length
     };
 
     // Filter
     const filteredAudits = audits.filter(a => {
-        const matchSearch = a.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           a.auditor.toLowerCase().includes(searchTerm.toLowerCase());
+        const companyName = companies.find(c => c.id === a.companyId)?.name || '';
+        const auditorName = auditors.find(ad => ad.id === a.auditorId)?.name || '';
+        
+        const matchSearch = companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           auditorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (a.scope || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchFilter = filterStatus === 'all' || a.status === filterStatus;
         return matchSearch && matchFilter;
     });
 
     // ========== FUNGSI KLIK STATS ==========
-    const handleStatClick = (type) => {
-        let title = '';
-        let items = [];
-        
-        switch(type) {
-            case 'total':
-                title = 'All Audits';
-                items = audits;
-                break;
-            case 'inProgress':
-                title = 'In Progress Audits';
-                items = audits.filter(a => a.status === 'in-progress');
-                break;
-            case 'completed':
-                title = 'Completed Audits';
-                items = audits.filter(a => a.status === 'completed');
-                break;
-            case 'pending':
-                title = 'Pending Audits';
-                items = audits.filter(a => a.status === 'pending');
-                break;
-            case 'review':
-                title = 'Under Review Audits';
-                items = audits.filter(a => a.status === 'review');
-                break;
-            case 'critical':
-                title = 'Audits with Critical Findings';
-                items = audits.filter(a => a.criticalFindings > 0);
-                break;
-            case 'totalFindings':
-                title = 'All Findings by Audit';
-                items = audits.map(a => ({
-                    company: a.company,
-                    findings: a.findings,
-                    critical: a.criticalFindings,
-                    status: a.status
-                }));
-                break;
-            case 'dueThisWeek':
-                title = 'Audits Due This Week';
-                items = dueThisWeek.map(a => ({
-                    company: a.company,
-                    dueDate: a.dueDate,
-                    auditor: a.auditor,
-                    status: a.status,
-                    progress: a.progress + '%'
-                }));
-                break;
-            default:
-                return;
+    const handleStatClick = async (type) => {
+        try {
+            let title = '';
+            let items = [];
+            
+            switch(type) {
+                case 'total':
+                    title = 'All Audits';
+                    items = audits;
+                    break;
+                case 'inProgress':
+                    title = 'In Progress Audits';
+                    items = audits.filter(a => a.status === 'in-progress');
+                    break;
+                case 'completed':
+                    title = 'Completed Audits';
+                    items = audits.filter(a => a.status === 'completed');
+                    break;
+                case 'pending':
+                    title = 'Pending Audits';
+                    items = audits.filter(a => a.status === 'pending');
+                    break;
+                case 'review':
+                    title = 'Under Review Audits';
+                    items = audits.filter(a => a.status === 'review');
+                    break;
+                case 'critical':
+                    title = 'Audits with Critical Findings';
+                    items = audits.filter(a => (a.criticalFindings || 0) > 0);
+                    break;
+                case 'totalFindings':
+                    title = 'All Findings by Audit';
+                    items = audits.map(a => ({
+                        company: companies.find(c => c.id === a.companyId)?.name || 'Unknown',
+                        findings: a.findings || 0,
+                        critical: a.criticalFindings || 0,
+                        status: a.status || 'pending'
+                    }));
+                    break;
+                case 'dueThisWeek':
+                    title = 'Audits Due This Week';
+                    items = dueThisWeek.map(a => ({
+                        company: companies.find(c => c.id === a.companyId)?.name || 'Unknown',
+                        dueDate: a.dueDate || a.endDate,
+                        auditor: auditors.find(ad => ad.id === a.auditorId)?.name || 'Unknown',
+                        status: a.status,
+                        progress: a.progress || 0
+                    }));
+                    break;
+                default:
+                    return;
+            }
+            
+            setModalData({ show: true, title, items });
+        } catch (error) {
+            console.error('Error:', error);
         }
-        
-        setModalData({ show: true, title, items });
     };
 
     // ========== FUNGSI KLIK BARIS ==========
@@ -212,18 +168,24 @@ const AdminAudits = () => {
     };
 
     // ========== FUNGSI DELETE ==========
-    const handleDelete = (id, e) => {
+    const handleDelete = async (id, e) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this audit?')) {
-            setAudits(audits.filter(a => a.id !== id));
-            alert('Audit deleted successfully!');
+            try {
+                await api.delete(`/audit/${id}`);
+                fetchData();
+                alert('Audit deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting audit:', error);
+                alert('Failed to delete audit');
+            }
         }
     };
 
     // ========== FUNGSI EDIT ==========
     const handleEdit = (audit, e) => {
         e.stopPropagation();
-        alert(`Edit audit for ${audit.company} (Demo mode)`);
+        alert(`Edit audit for ${companies.find(c => c.id === audit.companyId)?.name} (Demo mode)`);
     };
 
     // ========== FUNGSI SCHEDULE ==========
@@ -232,10 +194,27 @@ const AdminAudits = () => {
     };
 
     // ========== FUNGSI SCHEDULE SUBMIT ==========
-    const handleScheduleSubmit = (e) => {
+    const handleScheduleSubmit = async (e) => {
         e.preventDefault();
-        alert('Audit scheduled successfully! (Demo mode)');
-        setShowScheduleModal(false);
+        try {
+            const response = await api.post('/audit/', newAudit);
+            if (response.data) {
+                fetchData();
+                setShowScheduleModal(false);
+                setNewAudit({
+                    companyId: '',
+                    auditorId: '',
+                    scope: '',
+                    startDate: '',
+                    endDate: '',
+                    priority: 'medium'
+                });
+                alert('Audit scheduled successfully!');
+            }
+        } catch (error) {
+            console.error('Error scheduling audit:', error);
+            alert('Failed to schedule audit');
+        }
     };
 
     // ========== GET STATUS BADGE ==========
@@ -253,6 +232,9 @@ const AdminAudits = () => {
     const DetailModal = () => {
         if (!showDetail || !selectedAudit) return null;
 
+        const company = companies.find(c => c.id === selectedAudit.companyId);
+        const auditor = auditors.find(a => a.id === selectedAudit.auditorId);
+
         return (
             <div className="modal-overlay" onClick={() => setShowDetail(false)}>
                 <div className="modal-content large" onClick={e => e.stopPropagation()}>
@@ -266,19 +248,27 @@ const AdminAudits = () => {
                                 <h4>Audit Information</h4>
                                 <div className="detail-row">
                                     <label>Company:</label>
-                                    <span className="detail-value">{selectedAudit.company}</span>
+                                    <span className="detail-value">{company?.name || 'Unknown'}</span>
                                 </div>
                                 <div className="detail-row">
                                     <label>Auditor:</label>
-                                    <span className="detail-value">{selectedAudit.auditor}</span>
+                                    <span className="detail-value">{auditor?.name || 'Unknown'}</span>
                                 </div>
                                 <div className="detail-row">
                                     <label>Scope:</label>
-                                    <span className="detail-value">{selectedAudit.scope}</span>
+                                    <span className="detail-value">{selectedAudit.scope || '-'}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <label>Start Date:</label>
+                                    <span className="detail-value">{selectedAudit.startDate || '-'}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <label>End Date:</label>
+                                    <span className="detail-value">{selectedAudit.endDate || '-'}</span>
                                 </div>
                                 <div className="detail-row">
                                     <label>Due Date:</label>
-                                    <span className="detail-value">{selectedAudit.dueDate}</span>
+                                    <span className="detail-value">{selectedAudit.dueDate || selectedAudit.endDate || '-'}</span>
                                 </div>
                                 <div className="detail-row">
                                     <label>Status:</label>
@@ -292,18 +282,24 @@ const AdminAudits = () => {
                                     <label>Progress:</label>
                                     <div className="progress-cell">
                                         <div className="progress-bar">
-                                            <div className="progress-fill" style={{width: `${selectedAudit.progress}%`}}></div>
+                                            <div className="progress-fill" style={{width: `${selectedAudit.progress || 0}%`}}></div>
                                         </div>
-                                        <span>{selectedAudit.progress}%</span>
+                                        <span>{selectedAudit.progress || 0}%</span>
                                     </div>
                                 </div>
                                 <div className="detail-row">
                                     <label>Total Findings:</label>
-                                    <span className="detail-value">{selectedAudit.findings}</span>
+                                    <span className="detail-value">{selectedAudit.findings || 0}</span>
                                 </div>
                                 <div className="detail-row">
                                     <label>Critical Findings:</label>
-                                    <span className="detail-value critical-text">{selectedAudit.criticalFindings}</span>
+                                    <span className="detail-value critical-text">{selectedAudit.criticalFindings || 0}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <label>Priority:</label>
+                                    <span className={`priority-badge ${selectedAudit.priority || 'medium'}`}>
+                                        {selectedAudit.priority || 'medium'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -328,7 +324,9 @@ const AdminAudits = () => {
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
                     <div className="modal-header">
                         <h3>{modalData.title}</h3>
-                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>
+                            <FaTimes />
+                        </button>
                     </div>
                     <div className="modal-body">
                         {modalData.items.length === 0 ? (
@@ -344,18 +342,13 @@ const AdminAudits = () => {
                                 </thead>
                                 <tbody>
                                     {modalData.items.map((item, idx) => (
-                                        <tr key={idx} onClick={() => {
-                                            if (item.id) {
-                                                setModalData({...modalData, show: false});
-                                                handleRowClick(item);
-                                            }
-                                        }} className={item.id ? 'clickable-row' : ''}>
+                                        <tr key={idx} className={item.id ? 'clickable-row' : ''}>
                                             {Object.values(item).map((val, i) => (
                                                 <td key={i}>
                                                     {typeof val === 'number' && i === Object.keys(item).length - 1 && val > 0 ? (
                                                         <span className="critical-badge-small">{val}</span>
                                                     ) : (
-                                                        val
+                                                        val?.toString() || '-'
                                                     )}
                                                 </td>
                                             ))}
@@ -377,36 +370,77 @@ const AdminAudits = () => {
         return (
             <div className="modal-overlay" onClick={() => setShowScheduleModal(false)}>
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
-                    <h3>Schedule New Audit</h3>
+                    <div className="modal-header">
+                        <h3><FaCalendarCheck /> Schedule New Audit</h3>
+                        <button className="close-btn" onClick={() => setShowScheduleModal(false)}>×</button>
+                    </div>
                     <form onSubmit={handleScheduleSubmit}>
-                        <div className="form-group">
-                            <label>Company</label>
-                            <select required>
-                                <option value="">Select Company</option>
-                                <option>Tech Corp</option>
-                                <option>Finance Ltd</option>
-                                <option>HealthCare Inc</option>
-                                <option>EduGlobal</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Auditor</label>
-                            <select required>
-                                <option value="">Select Auditor</option>
-                                <option>Dr. Robert Wilson</option>
-                                <option>Lisa Anderson</option>
-                                <option>Michael Chen</option>
-                                <option>Sarah Williams</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Scope</label>
-                            <input type="text" placeholder="e.g., Full Security Audit" required />
-                        </div>
-                        <div className="form-row">
+                        <div className="modal-body">
                             <div className="form-group">
-                                <label>Due Date</label>
-                                <input type="date" required />
+                                <label>Company *</label>
+                                <select 
+                                    required 
+                                    value={newAudit.companyId}
+                                    onChange={(e) => setNewAudit({...newAudit, companyId: e.target.value})}
+                                >
+                                    <option value="">Select Company</option>
+                                    {companies.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Auditor *</label>
+                                <select 
+                                    required
+                                    value={newAudit.auditorId}
+                                    onChange={(e) => setNewAudit({...newAudit, auditorId: e.target.value})}
+                                >
+                                    <option value="">Select Auditor</option>
+                                    {auditors.map(a => (
+                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Scope *</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="e.g., Full Security Audit" 
+                                    required
+                                    value={newAudit.scope}
+                                    onChange={(e) => setNewAudit({...newAudit, scope: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Start Date</label>
+                                    <input 
+                                        type="date" 
+                                        value={newAudit.startDate}
+                                        onChange={(e) => setNewAudit({...newAudit, startDate: e.target.value})}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>End Date</label>
+                                    <input 
+                                        type="date" 
+                                        value={newAudit.endDate}
+                                        onChange={(e) => setNewAudit({...newAudit, endDate: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Priority</label>
+                                <select
+                                    value={newAudit.priority}
+                                    onChange={(e) => setNewAudit({...newAudit, priority: e.target.value})}
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
                             </div>
                         </div>
                         <div className="modal-actions">
@@ -418,6 +452,17 @@ const AdminAudits = () => {
             </div>
         );
     };
+
+    if (loading) {
+        return (
+            <DashboardLayout role="admin">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Loading audits...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout role="admin">
@@ -435,7 +480,7 @@ const AdminAudits = () => {
                     </div>
                 </div>
 
-                {/* Stats Cards - SEMUA BISA DI KLIK */}
+                {/* Stats Cards */}
                 <div className="stats-grid">
                     <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
                         <div className="stat-icon blue"><FaClipboardList /></div>
@@ -507,7 +552,7 @@ const AdminAudits = () => {
                     </div>
                 </div>
 
-                {/* Table - SETIAP BARIS BISA DI KLIK */}
+                {/* Table */}
                 <div className="table-container">
                     <table className="admin-table">
                         <thead>
@@ -523,35 +568,42 @@ const AdminAudits = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredAudits.map(a => (
-                                <tr key={a.id} className="clickable-row" onClick={() => handleRowClick(a)}>
-                                    <td><FaBuilding /> {a.company}</td>
-                                    <td><FaUserTie /> {a.auditor}</td>
-                                    <td>{a.scope}</td>
-                                    <td className={new Date(a.dueDate) < new Date() && a.status !== 'completed' ? 'overdue' : ''}>
-                                        <FaCalendarAlt /> {a.dueDate}
-                                    </td>
-                                    <td>{getStatusBadge(a.status)}</td>
-                                    <td>
-                                        <div className="progress-cell">
-                                            <div className="progress-bar">
-                                                <div className="progress-fill" style={{width: `${a.progress}%`}}></div>
+                            {filteredAudits.map(a => {
+                                const company = companies.find(c => c.id === a.companyId);
+                                const auditor = auditors.find(ad => ad.id === a.auditorId);
+                                const dueDate = a.dueDate || a.endDate;
+                                const isOverdue = dueDate && new Date(dueDate) < new Date() && a.status !== 'completed';
+                                
+                                return (
+                                    <tr key={a.id} className="clickable-row" onClick={() => handleRowClick(a)}>
+                                        <td><FaBuilding /> {company?.name || 'Unknown'}</td>
+                                        <td><FaUserTie /> {auditor?.name || 'Unknown'}</td>
+                                        <td>{a.scope || '-'}</td>
+                                        <td className={isOverdue ? 'overdue' : ''}>
+                                            <FaCalendarAlt /> {dueDate || '-'}
+                                        </td>
+                                        <td>{getStatusBadge(a.status)}</td>
+                                        <td>
+                                            <div className="progress-cell">
+                                                <div className="progress-bar">
+                                                    <div className="progress-fill" style={{width: `${a.progress || 0}%`}}></div>
+                                                </div>
+                                                <span>{a.progress || 0}%</span>
                                             </div>
-                                            <span>{a.progress}%</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {a.findings} 
-                                        {a.criticalFindings > 0 && 
-                                            <span className="critical-badge-small">({a.criticalFindings} critical)</span>
-                                        }
-                                    </td>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                        <button className="icon-btn" onClick={(e) => handleEdit(a, e)}><FaEdit /></button>
-                                        <button className="icon-btn" onClick={(e) => handleDelete(a.id, e)}><FaTrash /></button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td>
+                                            {a.findings || 0} 
+                                            {(a.criticalFindings || 0) > 0 && 
+                                                <span className="critical-badge-small">({a.criticalFindings} critical)</span>
+                                            }
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                            <button className="icon-btn" onClick={(e) => handleEdit(a, e)}><FaEdit /></button>
+                                            <button className="icon-btn" onClick={(e) => handleDelete(a.id, e)}><FaTrash /></button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

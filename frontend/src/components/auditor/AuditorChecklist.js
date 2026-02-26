@@ -1,6 +1,5 @@
 // src/components/auditor/AuditorChecklist.js
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
   FaClipboardCheck,
@@ -13,107 +12,76 @@ import {
   FaEdit,
   FaSave,
   FaBuilding,
-  FaShieldAlt
+  FaShieldAlt,
+  FaTimes
 } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './Auditor.css';
 
 const AuditorChecklist = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterFunction, setFilterFunction] = useState('all');
-  const [selectedCompany, setSelectedCompany] = useState('Tech Corp');
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [companies, setCompanies] = useState([]);
+  const [checklistItems, setChecklistItems] = useState([]);
+  const [modalData, setModalData] = useState({ show: false, title: '', items: [] });
 
   // NIST CSF Functions
   const nistFunctions = ['Identify', 'Protect', 'Detect', 'Respond', 'Recover'];
 
-  // Companies
-  const companies = ['Tech Corp', 'Finance Ltd', 'HealthCare Inc', 'EduGlobal'];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // Audit Checklist Items
-  const [checklistItems, setChecklistItems] = useState([
-    {
-      id: 1,
-      control: 'Asset Management (ID.AM-1)',
-      description: 'Physical devices and systems within the organization are inventoried',
-      function: 'Identify',
-      company: 'Tech Corp',
-      status: 'compliant',
-      evidence: 'uploaded',
-      auditor: 'Dr. Robert Wilson',
-      lastUpdated: '2024-02-20'
-    },
-    {
-      id: 2,
-      control: 'Risk Assessment (ID.RA-1)',
-      description: 'Asset vulnerabilities are identified and documented',
-      function: 'Identify',
-      company: 'Tech Corp',
-      status: 'partially',
-      evidence: 'pending',
-      auditor: 'Dr. Robert Wilson',
-      lastUpdated: '2024-02-19'
-    },
-    {
-      id: 3,
-      control: 'Access Control (PR.AC-1)',
-      description: 'Identities and credentials are managed for authorized devices and users',
-      function: 'Protect',
-      company: 'Tech Corp',
-      status: 'non-compliant',
-      evidence: 'missing',
-      auditor: 'Dr. Robert Wilson',
-      lastUpdated: '2024-02-18'
-    },
-    {
-      id: 4,
-      control: 'Data Security (PR.DS-1)',
-      description: 'Data-at-rest is protected',
-      function: 'Protect',
-      company: 'Finance Ltd',
-      status: 'compliant',
-      evidence: 'uploaded',
-      auditor: 'Lisa Anderson',
-      lastUpdated: '2024-02-21'
-    },
-    {
-      id: 5,
-      control: 'Security Continuous Monitoring (DE.CM-1)',
-      description: 'The network is monitored to detect potential cybersecurity events',
-      function: 'Detect',
-      company: 'Finance Ltd',
-      status: 'partially',
-      evidence: 'pending',
-      auditor: 'Lisa Anderson',
-      lastUpdated: '2024-02-20'
-    },
-    {
-      id: 6,
-      control: 'Response Planning (RS.RP-1)',
-      description: 'Response plan is executed during or after an incident',
-      function: 'Respond',
-      company: 'HealthCare Inc',
-      status: 'non-compliant',
-      evidence: 'missing',
-      auditor: 'Michael Chen',
-      lastUpdated: '2024-02-19'
-    },
-    {
-      id: 7,
-      control: 'Recovery Planning (RC.RP-1)',
-      description: 'Recovery plan is executed during or after an incident',
-      function: 'Recover',
-      company: 'HealthCare Inc',
-      status: 'compliant',
-      evidence: 'uploaded',
-      auditor: 'Michael Chen',
-      lastUpdated: '2024-02-22'
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // 1. Ambil semua companies yang diaudit oleh auditor ini
+      const auditsRes = await api.get('/audit/');
+      const myAudits = auditsRes.data?.filter(a => a.auditorId === user?.id) || [];
+      const companyIds = [...new Set(myAudits.map(a => a.companyId))];
+      
+      // 2. Ambil detail companies
+      const companiesPromises = companyIds.map(id => api.get(`/companies/${id}`));
+      const companiesRes = await Promise.all(companiesPromises);
+      const companiesData = companiesRes.map(res => res.data);
+      setCompanies(companiesData);
+      
+      if (companiesData.length > 0) {
+        setSelectedCompany(companiesData[0].id);
+      }
+
+      // 3. Ambil checklist items (nanti dari module audit)
+      // Untuk sementara pake mock data
+      setChecklistItems([
+        {
+          id: 1,
+          control: 'Asset Management (ID.AM-1)',
+          description: 'Physical devices and systems within the organization are inventoried',
+          function: 'Identify',
+          companyId: companiesData[0]?.id,
+          status: 'compliant',
+          evidence: 'uploaded',
+          lastUpdated: '2024-02-20'
+        },
+        // ... tambahkan mock items lainnya
+      ]);
+
+    } catch (error) {
+      console.error('Error fetching checklist data:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredItems = checklistItems.filter(item => {
     const matchesSearch = item.control.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFunction = filterFunction === 'all' || item.function === filterFunction;
-    const matchesCompany = item.company === selectedCompany;
+    const matchesCompany = item.companyId === selectedCompany;
     return matchesSearch && matchesFunction && matchesCompany;
   });
 
@@ -135,13 +103,31 @@ const AuditorChecklist = () => {
     }
   };
 
-  const updateStatus = (id, newStatus) => {
-    setChecklistItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, status: newStatus, lastUpdated: new Date().toISOString().split('T')[0] } : item
-      )
-    );
+  const updateStatus = async (id, newStatus) => {
+    try {
+      // Update ke database
+      await api.put(`/checklist/${id}`, { status: newStatus });
+      
+      setChecklistItems(items =>
+        items.map(item =>
+          item.id === id ? { ...item, status: newStatus, lastUpdated: new Date().toISOString().split('T')[0] } : item
+        )
+      );
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout role="auditor">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading checklist...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="auditor">
@@ -160,16 +146,18 @@ const AuditorChecklist = () => {
         {/* Company Selector */}
         <div className="company-selector">
           <label><FaBuilding /> Select Company:</label>
-          <select value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
-            {companies.map(company => <option key={company} value={company}>{company}</option>)}
+          <select value={selectedCompany} onChange={(e) => setSelectedCompany(Number(e.target.value))}>
+            {companies.map(company => (
+              <option key={company.id} value={company.id}>{company.name}</option>
+            ))}
           </select>
         </div>
 
         {/* NIST Functions Overview */}
         <div className="nist-functions-overview">
           {nistFunctions.map(func => {
-            const total = checklistItems.filter(i => i.function === func && i.company === selectedCompany).length;
-            const compliant = checklistItems.filter(i => i.function === func && i.company === selectedCompany && i.status === 'compliant').length;
+            const total = checklistItems.filter(i => i.function === func && i.companyId === selectedCompany).length;
+            const compliant = checklistItems.filter(i => i.function === func && i.companyId === selectedCompany && i.status === 'compliant').length;
             const percentage = total > 0 ? Math.round((compliant / total) * 100) : 0;
             
             return (
@@ -262,26 +250,26 @@ const AuditorChecklist = () => {
             <div className="summary-stat">
               <span className="stat-label">Compliant</span>
               <span className="stat-value">
-                {checklistItems.filter(i => i.company === selectedCompany && i.status === 'compliant').length}
+                {checklistItems.filter(i => i.companyId === selectedCompany && i.status === 'compliant').length}
               </span>
             </div>
             <div className="summary-stat">
               <span className="stat-label">Partially</span>
               <span className="stat-value">
-                {checklistItems.filter(i => i.company === selectedCompany && i.status === 'partially').length}
+                {checklistItems.filter(i => i.companyId === selectedCompany && i.status === 'partially').length}
               </span>
             </div>
             <div className="summary-stat">
               <span className="stat-label">Non-Compliant</span>
               <span className="stat-value">
-                {checklistItems.filter(i => i.company === selectedCompany && i.status === 'non-compliant').length}
+                {checklistItems.filter(i => i.companyId === selectedCompany && i.status === 'non-compliant').length}
               </span>
             </div>
             <div className="summary-stat total">
               <span className="stat-label">Compliance Rate</span>
               <span className="stat-value">
-                {Math.round((checklistItems.filter(i => i.company === selectedCompany && i.status === 'compliant').length / 
-                  checklistItems.filter(i => i.company === selectedCompany).length) * 100)}%
+                {Math.round((checklistItems.filter(i => i.companyId === selectedCompany && i.status === 'compliant').length / 
+                  (checklistItems.filter(i => i.companyId === selectedCompany).length || 1)) * 100)}%
               </span>
             </div>
           </div>

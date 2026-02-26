@@ -1,33 +1,48 @@
-import React, { useState } from 'react';
+// src/components/auditee/CompanyAssets.js
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
     FaServer, FaSearch, FaPlus, FaEdit, FaTrash, 
     FaEye, FaFilter, FaDatabase, FaCloud,
     FaNetworkWired, FaLaptop, FaTimes,
-    FaArrowUp, FaArrowDown,FaCheckCircle
+    FaCheckCircle
 } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './Auditee.css';
 
 const CompanyAssets = () => {
+    const { user } = useAuth();
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
-    const [modalData, setModalData] = useState({
-        show: false,
-        title: '',
-        items: []
-    });
+    const [assets, setAssets] = useState([]);
+    
+    // Modal states
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+    const [modalData, setModalData] = useState({ show: false, title: '', items: [] });
 
-    // ========== DATA ASSETS ==========
-    const [assets] = useState([
-        { id: 1, name: 'Web Server', type: 'Server', owner: 'IT Dept', cia: 'High', criticality: 8.5, status: 'active' },
-        { id: 2, name: 'Customer Database', type: 'Database', owner: 'IT Dept', cia: 'Critical', criticality: 9.2, status: 'active' },
-        { id: 3, name: 'HR Application', type: 'Application', owner: 'HR Dept', cia: 'Medium', criticality: 6.8, status: 'active' },
-        { id: 4, name: 'Firewall', type: 'Network', owner: 'IT Dept', cia: 'High', criticality: 8.0, status: 'active' },
-        { id: 5, name: 'Employee Portal', type: 'Application', owner: 'IT Dept', cia: 'Medium', criticality: 7.2, status: 'inactive' },
-        { id: 6, name: 'File Server', type: 'Server', owner: 'IT Dept', cia: 'Medium', criticality: 6.5, status: 'active' }
-    ]);
+    useEffect(() => {
+        fetchAssets();
+    }, []);
 
-    // ========== STATS ==========
+    const fetchAssets = useCallback(async () => {
+        setLoading(true);
+        try {
+            const companyId = user?.companyId || 1;
+            const response = await api.get(`/assets/company/${companyId}`);
+            setAssets(response.data || []);
+            console.log('Assets loaded:', response.data);
+        } catch (error) {
+            console.error('Error fetching assets:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
+    // Stats
     const stats = {
         total: assets.length,
         critical: assets.filter(a => a.cia === 'Critical').length,
@@ -35,15 +50,15 @@ const CompanyAssets = () => {
         active: assets.filter(a => a.status === 'active').length
     };
 
-    // ========== FILTER ==========
+    // Filter
     const filteredAssets = assets.filter(a => {
-        const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             a.owner.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             a.owner?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = filterType === 'all' || a.type === filterType;
         return matchesSearch && matchesType;
     });
 
-    // ========== HANDLE STAT CLICK ==========
+    // Handle stat click
     const handleStatClick = (type) => {
         let title = '';
         let items = [];
@@ -72,16 +87,112 @@ const CompanyAssets = () => {
         setModalData({ show: true, title, items });
     };
 
-    // ========== HANDLE ROW CLICK ==========
+    // Handle row click
     const handleRowClick = (asset) => {
-        setModalData({
-            show: true,
-            title: 'Asset Details',
-            items: [asset]
-        });
+        setModalData({ show: true, title: 'Asset Details', items: [asset] });
     };
 
-    // ========== MODAL ==========
+    // Handle edit click
+    const handleEditClick = (asset, e) => {
+        e.stopPropagation();
+        setSelectedAsset(asset);
+        setShowEditModal(true);
+    };
+
+    // Handle delete
+    // src/components/auditee/CompanyAssets.js
+
+// ===== PERBAIKI HANDLE DELETE =====
+const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    
+    // Konfirmasi dulu
+    if (!window.confirm('Are you sure you want to delete this asset?')) {
+        return;
+    }
+
+    try {
+        console.log('Deleting asset with ID:', id);
+        
+        // Panggil API DELETE
+        const response = await api.delete(`/assets/${id}`);
+        
+        console.log('Delete response:', response);
+        
+        // Kalau sukses (status 200, 201, 204)
+        if (response.status === 200 || response.status === 201 || response.status === 204) {
+            await fetchAssets(); // Refresh data
+            alert('✅ Asset deleted successfully!');
+        } else {
+            throw new Error('Unexpected response status');
+        }
+        
+    } catch (error) {
+        console.error('Error deleting asset:', error);
+        
+        // Tampilkan pesan error yang lebih informatif
+        if (error.response) {
+            // Error dari server (4xx, 5xx)
+            const status = error.response.status;
+            const data = error.response.data;
+            
+            if (status === 401) {
+                alert('❌ Unauthorized. Please login again.');
+            } else if (status === 403) {
+                alert('❌ You do not have permission to delete this asset.');
+            } else if (status === 404) {
+                alert('❌ Asset not found. It may have been already deleted.');
+            } else {
+                alert(`❌ Failed to delete asset: ${data?.detail || data?.message || 'Unknown error'}`);
+            }
+        } else if (error.request) {
+            // No response from server
+            alert('❌ Cannot connect to server. Please check your connection.');
+        } else {
+            // Other errors
+            alert('❌ Failed to delete asset. Please try again.');
+        }
+    }
+};
+    // Handle edit submit
+    const handleEditAsset = async (id, assetData) => {
+        try {
+            const response = await api.put(`/assets/${id}`, assetData);
+            if (response.data) {
+                await fetchAssets();
+                setShowEditModal(false);
+                setSelectedAsset(null);
+                alert('Asset updated successfully!');
+            }
+        } catch (error) {
+            console.error('Error updating asset:', error);
+            alert('Failed to update asset');
+        }
+    };
+
+    // Get CIA color
+    const getCiaColor = (cia) => {
+        switch(cia) {
+            case 'Critical': return '#b91c1c';
+            case 'High': return '#b45309';
+            case 'Medium': return '#b68b40';
+            default: return '#166534';
+        }
+    };
+
+    // Get asset icon
+    const getAssetIcon = (type) => {
+        switch(type?.toLowerCase()) {
+            case 'server': return <FaServer />;
+            case 'database': return <FaDatabase />;
+            case 'network': return <FaNetworkWired />;
+            default: return <FaLaptop />;
+        }
+    };
+
+    // ========== MODAL COMPONENTS ==========
+
+    // Detail Modal
     const DetailModal = () => {
         if (!modalData.show) return null;
 
@@ -110,7 +221,7 @@ const CompanyAssets = () => {
                                     {modalData.items.map((item, idx) => (
                                         <tr key={idx}>
                                             {Object.values(item).map((val, i) => (
-                                                <td key={i}>{val}</td>
+                                                <td key={i}>{val?.toString() || '-'}</td>
                                             ))}
                                         </tr>
                                     ))}
@@ -123,98 +234,348 @@ const CompanyAssets = () => {
         );
     };
 
-    // ========== GET CIA COLOR ==========
-    const getCiaColor = (cia) => {
-        switch(cia) {
-            case 'Critical': return '#b91c1c';
-            case 'High': return '#b45309';
-            case 'Medium': return '#b68b40';
-            default: return '#166534';
-        }
+    // Add Asset Modal
+    const AddAssetModal = () => {
+        const [formName, setFormName] = useState('');
+        const [formType, setFormType] = useState('Server');
+        const [formOwner, setFormOwner] = useState('');
+        const [formCia, setFormCia] = useState('Medium');
+        const [formLocation, setFormLocation] = useState('on-premise');
+
+        const resetForm = () => {
+            setFormName('');
+            setFormType('Server');
+            setFormOwner('');
+            setFormCia('Medium');
+            setFormLocation('on-premise');
+        };
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                const companyId = user?.companyId || 1;
+                const response = await api.post('/assets/', {
+                    name: formName,
+                    type: formType,
+                    owner: formOwner,
+                    cia: formCia,
+                    location: formLocation,
+                    company_id: companyId
+                });
+                
+                if (response.data) {
+                    await fetchAssets();
+                    setShowAddModal(false);
+                    resetForm();
+                    alert('Asset added successfully!');
+                }
+            } catch (error) {
+                console.error('Error adding asset:', error);
+                alert('Failed to add asset');
+            }
+        };
+
+        const handleClose = () => {
+            resetForm();
+            setShowAddModal(false);
+        };
+
+        const handleOverlayClick = (e) => {
+            if (e.target === e.currentTarget) {
+                handleClose();
+            }
+        };
+
+        if (!showAddModal) return null;
+
+        return (
+            <div className="modal-overlay" onClick={handleOverlayClick}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaPlus /> Add New Asset</h3>
+                        <button className="close-btn" onClick={handleClose} type="button">
+                            <FaTimes />
+                        </button>
+                    </div>
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Asset Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formName}
+                                    onChange={(e) => setFormName(e.target.value)}
+                                    placeholder="e.g., Production Database"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Type *</label>
+                                <select
+                                    required
+                                    value={formType}
+                                    onChange={(e) => setFormType(e.target.value)}
+                                >
+                                    <option value="Server">Server</option>
+                                    <option value="Database">Database</option>
+                                    <option value="Application">Application</option>
+                                    <option value="Network">Network</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Owner</label>
+                                <input
+                                    type="text"
+                                    value={formOwner}
+                                    onChange={(e) => setFormOwner(e.target.value)}
+                                    placeholder="e.g., IT Department"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>CIA Value *</label>
+                                <select
+                                    required
+                                    value={formCia}
+                                    onChange={(e) => setFormCia(e.target.value)}
+                                >
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Location</label>
+                                <select
+                                    value={formLocation}
+                                    onChange={(e) => setFormLocation(e.target.value)}
+                                >
+                                    <option value="cloud">Cloud</option>
+                                    <option value="on-premise">On-Premise</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button type="button" className="btn-secondary" onClick={handleClose}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn-primary">
+                                <FaPlus /> Add Asset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
     };
 
-    // ========== GET ASSET ICON ==========
-    const getAssetIcon = (type) => {
-        switch(type) {
-            case 'Server': return <FaServer />;
-            case 'Database': return <FaDatabase />;
-            case 'Network': return <FaNetworkWired />;
-            default: return <FaLaptop />;
-        }
+    // Edit Asset Modal
+    const EditAssetModal = () => {
+        const [formName, setFormName] = useState('');
+        const [formType, setFormType] = useState('Server');
+        const [formOwner, setFormOwner] = useState('');
+        const [formCia, setFormCia] = useState('Medium');
+        const [formLocation, setFormLocation] = useState('on-premise');
+
+        useEffect(() => {
+            if (selectedAsset) {
+                setFormName(selectedAsset.name || '');
+                setFormType(selectedAsset.type || 'Server');
+                setFormOwner(selectedAsset.owner || '');
+                setFormCia(selectedAsset.cia || 'Medium');
+                setFormLocation(selectedAsset.location || 'on-premise');
+            }
+        }, [selectedAsset]);
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await handleEditAsset(selectedAsset.id, {
+                name: formName,
+                type: formType,
+                owner: formOwner,
+                cia: formCia,
+                location: formLocation
+            });
+        };
+
+        const handleClose = () => {
+            setShowEditModal(false);
+            setSelectedAsset(null);
+        };
+
+        const handleOverlayClick = (e) => {
+            if (e.target === e.currentTarget) {
+                handleClose();
+            }
+        };
+
+        if (!showEditModal || !selectedAsset) return null;
+
+        return (
+            <div className="modal-overlay" onClick={handleOverlayClick}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaEdit /> Edit Asset</h3>
+                        <button className="close-btn" onClick={handleClose} type="button">
+                            <FaTimes />
+                        </button>
+                    </div>
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Asset Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formName}
+                                    onChange={(e) => setFormName(e.target.value)}
+                                    placeholder="e.g., Production Database"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Type *</label>
+                                <select
+                                    required
+                                    value={formType}
+                                    onChange={(e) => setFormType(e.target.value)}
+                                >
+                                    <option value="Server">Server</option>
+                                    <option value="Database">Database</option>
+                                    <option value="Application">Application</option>
+                                    <option value="Network">Network</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Owner</label>
+                                <input
+                                    type="text"
+                                    value={formOwner}
+                                    onChange={(e) => setFormOwner(e.target.value)}
+                                    placeholder="e.g., IT Department"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>CIA Value *</label>
+                                <select
+                                    required
+                                    value={formCia}
+                                    onChange={(e) => setFormCia(e.target.value)}
+                                >
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Location</label>
+                                <select
+                                    value={formLocation}
+                                    onChange={(e) => setFormLocation(e.target.value)}
+                                >
+                                    <option value="cloud">Cloud</option>
+                                    <option value="on-premise">On-Premise</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button type="button" className="btn-secondary" onClick={handleClose}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn-primary">
+                                <FaEdit /> Update Asset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
     };
+
+    if (loading) {
+        return (
+            <DashboardLayout role="auditee">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Loading assets...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout role="auditee">
-            <div className="auditee-page" style={{ padding: '24px' }}>
+            <div className="auditee-page">
                 {/* Header */}
-                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                <div className="page-header">
                     <div>
-                        <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <FaServer /> Asset Inventory
-                        </h2>
-                        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
-                            Manage your organization's assets
-                        </p>
+                        <h2><FaServer /> Asset Inventory</h2>
+                        <p>Manage your organization's assets</p>
                     </div>
-                    <button className="btn-primary" style={{ padding: '10px 20px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <button className="btn-primary" onClick={() => setShowAddModal(true)}>
                         <FaPlus /> Add Asset
                     </button>
                 </div>
 
-                {/* STATS CARDS - SEMUA BISA DI KLIK */}
-                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
-                    <div className="stat-card clickable" onClick={() => handleStatClick('total')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
-                        <div className="stat-icon blue" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#e8f0fe', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
-                            <FaServer />
-                        </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.total}</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Total Assets</p>
+                {/* Stats Cards */}
+                <div className="stats-grid">
+                    <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
+                        <div className="stat-icon blue"><FaServer /></div>
+                        <h3>{stats.total}</h3>
+                        <p>Total Assets</p>
                     </div>
 
-                    <div className="stat-card clickable" onClick={() => handleStatClick('critical')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
-                        <div className="stat-icon red" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fee8e8', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
-                            <FaServer />
-                        </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.critical}</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Critical Assets</p>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('critical')}>
+                        <div className="stat-icon red"><FaServer /></div>
+                        <h3>{stats.critical}</h3>
+                        <p>Critical Assets</p>
                     </div>
 
-                    <div className="stat-card clickable" onClick={() => handleStatClick('high')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
-                        <div className="stat-icon orange" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fff1e6', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
-                            <FaServer />
-                        </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.high}</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>High Value</p>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('high')}>
+                        <div className="stat-icon orange"><FaServer /></div>
+                        <h3>{stats.high}</h3>
+                        <p>High Value</p>
                     </div>
 
-                    <div className="stat-card clickable" onClick={() => handleStatClick('active')} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #eef2f6', position: 'relative', cursor: 'pointer' }}>
-                        <div className="stat-icon green" style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#e6f7e6', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '12px' }}>
-                            <FaCheckCircle />
-                        </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 600, color: '#1e293b', margin: '0 0 4px 0' }}>{stats.active}</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Active</p>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('active')}>
+                        <div className="stat-icon green"><FaCheckCircle /></div>
+                        <h3>{stats.active}</h3>
+                        <p>Active</p>
                     </div>
                 </div>
 
                 {/* Search & Filter */}
-                <div className="search-filter-bar" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-                    <div className="search-box" style={{ flex: 1, position: 'relative' }}>
-                        <FaSearch className="search-icon" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                        <input 
+                <div className="search-filter-bar">
+                    <div className="search-box">
+                        <FaSearch className="search-icon" />
+                        <input
                             type="text"
                             placeholder="Search assets..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ width: '100%', padding: '10px 10px 10px 40px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px' }}
                         />
                     </div>
-                    <div className="filter-box" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white' }}>
-                        <FaFilter style={{ color: '#94a3b8' }} />
-                        <select 
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                            style={{ border: 'none', padding: '10px', fontSize: '14px', outline: 'none', background: 'transparent' }}
-                        >
+                    <div className="filter-box">
+                        <FaFilter className="filter-icon" />
+                        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                             <option value="all">All Types</option>
                             <option value="Server">Server</option>
                             <option value="Database">Database</option>
@@ -225,43 +586,67 @@ const CompanyAssets = () => {
                 </div>
 
                 {/* Assets Table */}
-                <div className="table-container" style={{ background: 'white', borderRadius: '12px', border: '1px solid #eef2f6', overflow: 'auto' }}>
-                    <table className="auditee-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="table-container">
+                    <table className="auditee-table">
                         <thead>
                             <tr>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Asset</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Type</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Owner</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>CIA</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Criticality</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Status</th>
-                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: 600, color: '#64748b', borderBottom: '2px solid #eef2f6' }}>Actions</th>
+                                <th>Asset</th>
+                                <th>Type</th>
+                                <th>Owner</th>
+                                <th>CIA</th>
+                                <th>Criticality</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredAssets.map(asset => (
-                                <tr key={asset.id} className="clickable-row" onClick={() => handleRowClick(asset)} style={{ cursor: 'pointer' }}>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>
+                                <tr key={asset.id} className="clickable-row" onClick={() => handleRowClick(asset)}>
+                                    <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             {getAssetIcon(asset.type)} {asset.name}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>{asset.type}</td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>{asset.owner}</td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>
-                                        <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', background: `${getCiaColor(asset.cia)}20`, color: getCiaColor(asset.cia) }}>
+                                    <td>{asset.type}</td>
+                                    <td>{asset.owner || '-'}</td>
+                                    <td>
+                                        <span style={{ 
+                                            padding: '4px 8px', 
+                                            borderRadius: '12px', 
+                                            fontSize: '11px', 
+                                            background: `${getCiaColor(asset.cia)}20`, 
+                                            color: getCiaColor(asset.cia) 
+                                        }}>
                                             {asset.cia}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>{asset.criticality}</td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }}>
-                                        <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '11px', background: asset.status === 'active' ? '#e6f7e6' : '#f1f5f9', color: asset.status === 'active' ? '#166534' : '#64748b' }}>
-                                            {asset.status}
+                                    <td>{asset.criticality || 'N/A'}</td>
+                                    <td>
+                                        <span style={{ 
+                                            padding: '4px 8px', 
+                                            borderRadius: '12px', 
+                                            fontSize: '11px', 
+                                            background: asset.status === 'active' ? '#e6f7e6' : '#f1f5f9', 
+                                            color: asset.status === 'active' ? '#166534' : '#64748b' 
+                                        }}>
+                                            {asset.status || 'active'}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '16px', fontSize: '13px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' }} onClick={(e) => e.stopPropagation()}>
-                                        <button className="icon-btn" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginRight: '8px' }}><FaEdit /></button>
-                                        <button className="icon-btn" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><FaTrash /></button>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                        <button 
+                                            className="icon-btn" 
+                                            onClick={(e) => handleEditClick(asset, e)}
+                                            title="Edit"
+                                        >
+                                            <FaEdit />
+                                        </button>
+                                        <button 
+                                            className="icon-btn" 
+                                            onClick={(e) => handleDelete(asset.id, e)}
+                                            title="Delete"
+                                        >
+                                            <FaTrash />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -269,8 +654,10 @@ const CompanyAssets = () => {
                     </table>
                 </div>
 
-                {/* MODAL */}
+                {/* Modals */}
                 <DetailModal />
+                <AddAssetModal />
+                <EditAssetModal />
             </div>
         </DashboardLayout>
     );

@@ -1,6 +1,5 @@
 // src/components/auditee/CompanyProfile.js
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
   FaBuilding, 
@@ -12,45 +11,77 @@ import {
   FaInfoCircle,
   FaCalendarAlt,
   FaEnvelope,
-  FaPhone
+  FaPhone,
+  FaTimes
 } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './Auditee.css';
 
 const CompanyProfile = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    companyName: 'Tech Solutions Inc',
-    email: 'contact@techsolutions.com',
-    phone: '+62 21 1234 5678',
-    sector: 'Technology',
-    employees: 150,
-    systemType: 'Web Application & Cloud Services',
-    address: 'Jl. Sudirman No. 123, Jakarta',
-    registrationDate: '2024-01-15',
-    lastAudit: '2024-02-01',
-    exposureLevel: 'Medium'
-  });
+  const [profile, setProfile] = useState(null);
+  const [editedProfile, setEditedProfile] = useState({});
 
-  const [editedProfile, setEditedProfile] = useState({...profile});
+  useEffect(() => {
+    fetchCompanyProfile();
+  }, []);
 
-  // Calculate exposure level based on inputs
+  const fetchCompanyProfile = async () => {
+    setLoading(true);
+    try {
+      const companyId = user?.companyId || 1;
+      const response = await api.get(`/companies/${companyId}`);
+      setProfile(response.data);
+      setEditedProfile(response.data);
+    } catch (error) {
+      console.error('Error fetching company profile:', error);
+      // Fallback: buat data sementara dari user
+      setProfile({
+        id: 1,
+        name: `${user?.fullname || 'User'}'s Company`,
+        sector: 'Technology',
+        employees: 0,
+        system_type: '',
+        exposure_level: 'Medium',
+        email: user?.email || '',
+        phone: '',
+        address: '',
+        created_at: new Date().toISOString(),
+        last_audit: null
+      });
+      setEditedProfile({
+        name: `${user?.fullname || 'User'}'s Company`,
+        sector: 'Technology',
+        employees: 0,
+        system_type: '',
+        exposure_level: 'Medium',
+        email: user?.email || '',
+        phone: '',
+        address: ''
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate exposure level
   const calculateExposure = (sector, employees, systemType) => {
     let score = 0;
     
-    // Sector risk
     const highRiskSectors = ['Finance', 'Healthcare', 'Government'];
     if (highRiskSectors.includes(sector)) score += 3;
     else if (sector === 'Technology') score += 2;
     else score += 1;
     
-    // Employee count
     if (employees > 1000) score += 3;
     else if (employees > 100) score += 2;
     else score += 1;
     
-    // System type
-    if (systemType.toLowerCase().includes('cloud')) score += 3;
-    else if (systemType.toLowerCase().includes('web')) score += 2;
+    if (systemType?.toLowerCase().includes('cloud')) score += 3;
+    else if (systemType?.toLowerCase().includes('web')) score += 2;
     else score += 1;
     
     if (score >= 8) return 'High';
@@ -62,21 +93,29 @@ const CompanyProfile = () => {
     const { name, value } = e.target;
     setEditedProfile(prev => {
       const updated = { ...prev, [name]: value };
-      // Auto-calculate exposure when relevant fields change
-      if (name === 'sector' || name === 'employees' || name === 'systemType') {
-        updated.exposureLevel = calculateExposure(
+      if (name === 'sector' || name === 'employees' || name === 'system_type') {
+        updated.exposure_level = calculateExposure(
           updated.sector,
           parseInt(updated.employees) || 0,
-          updated.systemType
+          updated.system_type
         );
       }
       return updated;
     });
   };
 
-  const handleSave = () => {
-    setProfile(editedProfile);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const response = await api.put(`/companies/${profile.id}`, editedProfile);
+      if (response.data) {
+        setProfile(editedProfile);
+        setIsEditing(false);
+        alert('Profile updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile');
+    }
   };
 
   const handleCancel = () => {
@@ -84,6 +123,18 @@ const CompanyProfile = () => {
     setIsEditing(false);
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout role="auditee">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading company profile...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Profile pasti ada karena sudah di-fallback
   return (
     <DashboardLayout role="auditee">
       <div className="auditee-page">
@@ -116,11 +167,11 @@ const CompanyProfile = () => {
               <FaBuilding />
             </div>
             <div className="profile-title">
-              <h1>{profile.companyName}</h1>
+              <h1>{profile.name}</h1>
               <p>Sector: {profile.sector} · {profile.employees} employees</p>
             </div>
-            <div className={`exposure-badge ${profile.exposureLevel.toLowerCase()}`}>
-              Exposure: {profile.exposureLevel}
+            <div className={`exposure-badge ${profile.exposure_level?.toLowerCase() || 'medium'}`}>
+              Exposure: {profile.exposure_level || 'Medium'}
             </div>
           </div>
 
@@ -134,12 +185,12 @@ const CompanyProfile = () => {
                   {isEditing ? (
                     <input
                       type="text"
-                      name="companyName"
-                      value={editedProfile.companyName}
+                      name="name"
+                      value={editedProfile.name || ''}
                       onChange={handleChange}
                     />
                   ) : (
-                    <p>{profile.companyName}</p>
+                    <p>{profile.name}</p>
                   )}
                 </div>
 
@@ -149,7 +200,7 @@ const CompanyProfile = () => {
                     <input
                       type="email"
                       name="email"
-                      value={editedProfile.email}
+                      value={editedProfile.email || ''}
                       onChange={handleChange}
                     />
                   ) : (
@@ -163,11 +214,11 @@ const CompanyProfile = () => {
                     <input
                       type="text"
                       name="phone"
-                      value={editedProfile.phone}
+                      value={editedProfile.phone || ''}
                       onChange={handleChange}
                     />
                   ) : (
-                    <p><FaPhone /> {profile.phone}</p>
+                    <p><FaPhone /> {profile.phone || '-'}</p>
                   )}
                 </div>
 
@@ -176,12 +227,12 @@ const CompanyProfile = () => {
                   {isEditing ? (
                     <textarea
                       name="address"
-                      value={editedProfile.address}
+                      value={editedProfile.address || ''}
                       onChange={handleChange}
                       rows="2"
                     />
                   ) : (
-                    <p>{profile.address}</p>
+                    <p>{profile.address || '-'}</p>
                   )}
                 </div>
               </div>
@@ -196,7 +247,7 @@ const CompanyProfile = () => {
                   {isEditing ? (
                     <select
                       name="sector"
-                      value={editedProfile.sector}
+                      value={editedProfile.sector || ''}
                       onChange={handleChange}
                     >
                       <option value="Technology">Technology</option>
@@ -217,7 +268,7 @@ const CompanyProfile = () => {
                     <input
                       type="number"
                       name="employees"
-                      value={editedProfile.employees}
+                      value={editedProfile.employees || ''}
                       onChange={handleChange}
                     />
                   ) : (
@@ -230,13 +281,13 @@ const CompanyProfile = () => {
                   {isEditing ? (
                     <input
                       type="text"
-                      name="systemType"
-                      value={editedProfile.systemType}
+                      name="system_type"
+                      value={editedProfile.system_type || ''}
                       onChange={handleChange}
                       placeholder="e.g., Web, Cloud, Mobile"
                     />
                   ) : (
-                    <p><FaGlobe /> {profile.systemType}</p>
+                    <p><FaGlobe /> {profile.system_type || '-'}</p>
                   )}
                 </div>
               </div>
@@ -248,8 +299,8 @@ const CompanyProfile = () => {
               <div className="profile-fields">
                 <div className="field">
                   <label>Exposure Level</label>
-                  <p className={`exposure-text ${profile.exposureLevel.toLowerCase()}`}>
-                    {profile.exposureLevel}
+                  <p className={`exposure-text ${profile.exposure_level?.toLowerCase() || 'medium'}`}>
+                    {profile.exposure_level || 'Medium'}
                   </p>
                   {isEditing && (
                     <small>Auto-calculated based on sector, size, and system type</small>
@@ -258,12 +309,12 @@ const CompanyProfile = () => {
 
                 <div className="field">
                   <label>Registration Date</label>
-                  <p><FaCalendarAlt /> {profile.registrationDate}</p>
+                  <p><FaCalendarAlt /> {profile.created_at?.split('T')[0] || '-'}</p>
                 </div>
 
                 <div className="field">
                   <label>Last Audit</label>
-                  <p><FaCalendarAlt /> {profile.lastAudit}</p>
+                  <p><FaCalendarAlt /> {profile.last_audit || '-'}</p>
                 </div>
               </div>
             </div>
@@ -273,9 +324,19 @@ const CompanyProfile = () => {
               <h3>📊 Exposure Level Calculation</h3>
               <div className="exposure-calculation">
                 <div className="calc-item">
-                  <span>Sector (Finance/Healthcare/Government):</span>
-                  <span className={profile.sector === 'Finance' || profile.sector === 'Healthcare' ? 'high' : 'normal'}>
-                    +{profile.sector === 'Finance' || profile.sector === 'Healthcare' ? 3 : 2}
+                  <span>Sector ({profile.sector}):</span>
+                  <span className={
+                    profile.sector === 'Finance' || profile.sector === 'Healthcare' || profile.sector === 'Government' 
+                      ? 'high' 
+                      : profile.sector === 'Technology' 
+                        ? 'medium' 
+                        : 'low'
+                  }>
+                    +{profile.sector === 'Finance' || profile.sector === 'Healthcare' || profile.sector === 'Government' 
+                      ? 3 
+                      : profile.sector === 'Technology' 
+                        ? 2 
+                        : 1}
                   </span>
                 </div>
                 <div className="calc-item">
@@ -285,15 +346,15 @@ const CompanyProfile = () => {
                   </span>
                 </div>
                 <div className="calc-item">
-                  <span>System Type ({profile.systemType}):</span>
-                  <span className={profile.systemType.toLowerCase().includes('cloud') ? 'high' : 'medium'}>
-                    +{profile.systemType.toLowerCase().includes('cloud') ? 3 : 2}
+                  <span>System Type ({profile.system_type}):</span>
+                  <span className={profile.system_type?.toLowerCase().includes('cloud') ? 'high' : 'medium'}>
+                    +{profile.system_type?.toLowerCase().includes('cloud') ? 3 : 2}
                   </span>
                 </div>
                 <div className="calc-total">
                   <span>Total Score:</span>
-                  <span className={`exposure-${profile.exposureLevel.toLowerCase()}`}>
-                    {profile.exposureLevel}
+                  <span className={`exposure-${profile.exposure_level?.toLowerCase() || 'medium'}`}>
+                    {profile.exposure_level || 'Medium'}
                   </span>
                 </div>
               </div>

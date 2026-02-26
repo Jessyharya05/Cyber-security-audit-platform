@@ -18,7 +18,7 @@ import './Auth.css';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    fullName: '',
+    fullname: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -40,32 +40,43 @@ const Register = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
+  e.preventDefault();
+  
+  if (formData.password !== formData.confirmPassword) {
+    alert('Passwords do not match');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
+  
+  try {
+    // Kirim formData langsung (sudah include role)
+    const result = await register(formData);
     
-    try {
-      const result = await register(formData, formData.role);
-      if (result.success) {
-        if (formData.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (formData.role === 'auditor') {
-          navigate('/auditor/dashboard');
-        } else {
-          navigate('/auditee/dashboard');
-        }
-      }
-    } catch (error) {
-      alert('Registration failed');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      // Tampilkan pesan sukses
+      alert('✅ Registration successful! Please check your email and login.');
+      
+      // Reset form
+      setFormData({
+        fullname: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'auditee'
+      });
+      setAgreeTerms(false);
+      
+      // Redirect ke halaman login
+      navigate('/login');
     }
-  };
+  } catch (error) {
+    console.error('Registration error:', error);
+    alert('❌ Registration failed: ' + (error.response?.data?.detail || 'Unknown error'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="register-container">
@@ -115,9 +126,9 @@ const Register = () => {
                 <FaUser className="input-icon" />
                 <input
                   type="text"
-                  name="fullName"
+                  name="fullname"
                   placeholder="Your full name"
-                  value={formData.fullName}
+                  value={formData.fullname}
                   onChange={handleChange}
                   required
                   style={{

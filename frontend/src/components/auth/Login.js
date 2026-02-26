@@ -39,22 +39,22 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     
-    try {
-      const result = await login(formData.email, formData.password);
-      if (result.success) {
-        if (result.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (result.user.role === 'auditor') {
-          navigate('/auditor/dashboard');
-        } else {
-          navigate('/auditee/dashboard');
-        }
-      }
-    } catch (error) {
-      setError(error.message || 'Invalid email or password');
-    } finally {
-      setLoading(false);
+try {
+  const result = await login(formData.email, formData.password);
+  if (result.success) {
+    if (result.user.role === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (result.user.role === 'auditor') {
+      navigate('/auditor/dashboard');
+    } else {
+      navigate('/auditee/dashboard');
     }
+  }
+} catch (error) {
+  // ✅ TANGKAP ERROR DENGAN BENER
+  const errorMsg = error.response?.data?.detail || error.message || 'Invalid email or password';
+  setError(errorMsg);
+}
   };
 
   return (

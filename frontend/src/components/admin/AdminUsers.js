@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+// ============================================
+// src/components/admin/AdminUsers.js
+// ============================================
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
     FaUsers, FaUserTie, FaUserCheck, FaSearch,
-    FaEdit, FaTrash, FaCheckCircle
+    FaEdit, FaTrash, FaCheckCircle, FaTimes
 } from 'react-icons/fa';
+import api from '../../services/api';
 import './Admin.css';
 
 const AdminUsers = () => {
+    const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [modalData, setModalData] = useState({
         show: false,
@@ -16,16 +22,21 @@ const AdminUsers = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
 
-    // Data users
-    const [users] = useState([
-        { id: 1, name: 'John Smith', email: 'john@techcorp.com', role: 'auditee', company: 'Tech Corp', status: 'active', lastLogin: '2024-02-20' },
-        { id: 2, name: 'Sarah Johnson', email: 'sarah@finance.com', role: 'auditee', company: 'Finance Ltd', status: 'active', lastLogin: '2024-02-19' },
-        { id: 3, name: 'Dr. Robert Wilson', email: 'robert@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-21' },
-        { id: 4, name: 'Lisa Anderson', email: 'lisa@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-20' },
-        { id: 5, name: 'Michael Chen', email: 'michael@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-19' },
-        { id: 6, name: 'Emily Davis', email: 'emily@healthcare.com', role: 'auditee', company: 'HealthCare Inc', status: 'inactive', lastLogin: '2024-02-01' },
-        { id: 7, name: 'David Brown', email: 'david@retail.com', role: 'auditee', company: 'Retail Solutions', status: 'active', lastLogin: '2024-02-18' }
-    ]);
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/users/');
+            setUsers(response.data || []);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Stats
     const stats = {
@@ -37,28 +48,34 @@ const AdminUsers = () => {
 
     // Filter
     const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Handle klik stats
-    const handleStatClick = (type) => {
-        let title = '';
-        let items = [];
-        if (type === 'total') {
-            title = 'All Users';
-            items = users;
-        } else if (type === 'auditors') {
-            title = 'Auditors';
-            items = users.filter(u => u.role === 'auditor');
-        } else if (type === 'auditees') {
-            title = 'Auditees';
-            items = users.filter(u => u.role === 'auditee');
-        } else if (type === 'active') {
-            title = 'Active Users';
-            items = users.filter(u => u.status === 'active');
+    const handleStatClick = async (type) => {
+        try {
+            let title = '';
+            let items = [];
+            
+            if (type === 'total') {
+                title = 'All Users';
+                items = users;
+            } else if (type === 'auditors') {
+                title = 'Auditors';
+                items = users.filter(u => u.role === 'auditor');
+            } else if (type === 'auditees') {
+                title = 'Auditees';
+                items = users.filter(u => u.role === 'auditee');
+            } else if (type === 'active') {
+                title = 'Active Users';
+                items = users.filter(u => u.status === 'active');
+            }
+            
+            setModalData({ show: true, title, items });
+        } catch (error) {
+            console.error('Error:', error);
         }
-        setModalData({ show: true, title, items });
     };
 
     // Handle klik baris
@@ -68,18 +85,24 @@ const AdminUsers = () => {
     };
 
     // Handle delete
-    const handleDelete = (id, e) => {
+    const handleDelete = async (id, e) => {
         e.stopPropagation();
-        if (window.confirm('Delete this user?')) {
-            // Implement delete logic here
-            alert('User deleted (demo)');
+        if (window.confirm('Are you sure you want to delete this user?')) {
+            try {
+                await api.delete(`/users/${id}`);
+                fetchUsers();
+                alert('User deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Failed to delete user');
+            }
         }
     };
 
     // Handle edit
     const handleEdit = (user, e) => {
         e.stopPropagation();
-        alert(`Edit user: ${user.name} (demo)`);
+        alert(`Edit user: ${user.name} (Demo mode)`);
     };
 
     // Modal Detail
@@ -96,11 +119,13 @@ const AdminUsers = () => {
                     <div className="modal-body">
                         <div className="detail-row"><label>Email:</label> {selectedUser.email}</div>
                         <div className="detail-row"><label>Role:</label> {selectedUser.role}</div>
-                        <div className="detail-row"><label>Company:</label> {selectedUser.company}</div>
+                        <div className="detail-row"><label>Company:</label> {selectedUser.company || '-'}</div>
                         <div className="detail-row"><label>Status:</label> 
-                            <span className={`status-badge ${selectedUser.status}`}>{selectedUser.status}</span>
+                            <span className={`status-badge ${selectedUser.status || 'active'}`}>
+                                {selectedUser.status || 'active'}
+                            </span>
                         </div>
-                        <div className="detail-row"><label>Last Login:</label> {selectedUser.lastLogin}</div>
+                        <div className="detail-row"><label>Last Login:</label> {selectedUser.lastLogin || '-'}</div>
                     </div>
                 </div>
             </div>
@@ -116,32 +141,63 @@ const AdminUsers = () => {
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
                     <div className="modal-header">
                         <h3>{modalData.title}</h3>
-                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>
+                            <FaTimes />
+                        </button>
                     </div>
                     <div className="modal-body">
-                        <table className="detail-table">
-                            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
-                            <tbody>
-                                {modalData.items.map(u => (
-                                    <tr key={u.id} onClick={() => { setModalData({...modalData, show: false}); handleRowClick(u); }} className="clickable-row">
-                                        <td>{u.name}</td>
-                                        <td>{u.email}</td>
-                                        <td>{u.role}</td>
-                                        <td><span className={`status-badge ${u.status}`}>{u.status}</span></td>
+                        {modalData.items.length === 0 ? (
+                            <p className="no-data">No data available</p>
+                        ) : (
+                            <table className="detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {modalData.items.map(u => (
+                                        <tr key={u.id} onClick={() => { 
+                                            setModalData({...modalData, show: false}); 
+                                            handleRowClick(u); 
+                                        }} className="clickable-row">
+                                            <td>{u.name}</td>
+                                            <td>{u.email}</td>
+                                            <td>{u.role}</td>
+                                            <td>
+                                                <span className={`status-badge ${u.status || 'active'}`}>
+                                                    {u.status || 'active'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>
         );
     };
 
+    if (loading) {
+        return (
+            <DashboardLayout role="admin">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Loading users...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout role="admin">
             <div className="admin-page">
-                {/* Header - TANPA BUTTON ADD USER */}
+                {/* Header */}
                 <div className="page-header">
                     <div>
                         <h2><FaUsers /> Users Management</h2>
@@ -149,7 +205,7 @@ const AdminUsers = () => {
                     </div>
                 </div>
 
-                {/* Stats Cards - BISA DI KLIK */}
+                {/* Stats Cards */}
                 <div className="stats-grid">
                     <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
                         <div className="stat-icon blue"><FaUsers /></div>
@@ -202,10 +258,10 @@ const AdminUsers = () => {
                                     <td><strong>{u.name}</strong></td>
                                     <td>{u.email}</td>
                                     <td>{u.role}</td>
-                                    <td>{u.company}</td>
+                                    <td>{u.company || '-'}</td>
                                     <td>
-                                        <span className={`status-badge ${u.status}`}>
-                                            {u.status}
+                                        <span className={`status-badge ${u.status || 'active'}`}>
+                                            {u.status || 'active'}
                                         </span>
                                     </td>
                                     <td onClick={(e) => e.stopPropagation()}>
@@ -222,6 +278,7 @@ const AdminUsers = () => {
                     </table>
                 </div>
 
+                {/* MODALS */}
                 <StatsModal />
                 <DetailModal />
             </div>

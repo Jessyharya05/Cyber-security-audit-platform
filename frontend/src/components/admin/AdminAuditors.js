@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+// ============================================
+// src/components/admin/AdminAuditors.js
+// ============================================
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
     FaUserTie, FaSearch, FaEdit, FaTrash, 
     FaEnvelope, FaPhone, FaCertificate,
     FaCheckCircle, FaExclamationTriangle, FaStar,
-    FaChartBar, FaAward, FaGraduationCap
+    FaChartBar, FaAward, FaGraduationCap,
+    FaPlus, FaTimes
 } from 'react-icons/fa';
+import api from '../../services/api';
 import './Admin.css';
 
 const AdminAuditors = () => {
+    const [loading, setLoading] = useState(true);
+    const [auditors, setAuditors] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [modalData, setModalData] = useState({
         show: false,
@@ -17,174 +24,157 @@ const AdminAuditors = () => {
     });
     const [selectedAuditor, setSelectedAuditor] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newAuditor, setNewAuditor] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        specialization: 'General',
+        certifications: '',
+        experience: '',
+        education: ''
+    });
 
-    // Data auditors
-    const [auditors, setAuditors] = useState([
-        { 
-            id: 1, 
-            name: 'Dr. Robert Wilson', 
-            email: 'robert.wilson@cyber.com',
-            phone: '+62 812-3456-7890',
-            specialization: 'Network Security',
-            certifications: ['CISSP', 'CEH', 'CISA', 'CCNA'],
-            assigned: 5,
-            completed: 12,
-            rating: 4.8,
-            status: 'active',
-            totalFindings: 45,
-            experience: '12 years',
-            education: 'PhD in Cybersecurity'
-        },
-        { 
-            id: 2, 
-            name: 'Lisa Anderson', 
-            email: 'lisa.anderson@cyber.com',
-            phone: '+62 813-9876-5432',
-            specialization: 'Web Security',
-            certifications: ['OSCP', 'CEH', 'CISSP', 'GWEB'],
-            assigned: 3,
-            completed: 8,
-            rating: 4.9,
-            status: 'active',
-            totalFindings: 28,
-            experience: '8 years',
-            education: 'Master in Information Security'
-        },
-        { 
-            id: 3, 
-            name: 'Michael Chen', 
-            email: 'michael.chen@cyber.com',
-            phone: '+62 814-5678-1234',
-            specialization: 'Cloud Security',
-            certifications: ['CCSP', 'AWS Security', 'CISSP', 'Azure Security'],
-            assigned: 4,
-            completed: 6,
-            rating: 4.7,
-            status: 'active',
-            totalFindings: 35,
-            experience: '10 years',
-            education: 'Bachelor in Computer Science'
-        },
-        { 
-            id: 4, 
-            name: 'Sarah Williams', 
-            email: 'sarah.williams@cyber.com',
-            phone: '+62 815-4321-8765',
-            specialization: 'Application Security',
-            certifications: ['CSSLP', 'CEH', 'GWEB'],
-            assigned: 2,
-            completed: 4,
-            rating: 4.5,
-            status: 'inactive',
-            totalFindings: 15,
-            experience: '6 years',
-            education: 'Master in Software Engineering'
+    useEffect(() => {
+        fetchAuditors();
+    }, []);
+
+    const fetchAuditors = async () => {
+        setLoading(true);
+        try {
+            // Ambil semua users dengan role auditor
+            const response = await api.get('/users/?role=auditor');
+            setAuditors(response.data || []);
+        } catch (error) {
+            console.error('Error fetching auditors:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
-    // Hitung rata-rata rating
-    const avgRating = (auditors.reduce((sum, a) => sum + a.rating, 0) / auditors.length).toFixed(1);
-
-    // Hitung total certifications
-    const totalCertifications = auditors.reduce((sum, a) => sum + a.certifications.length, 0);
-
-    // Stats
+    // Hitung stats
     const stats = {
         total: auditors.length,
         active: auditors.filter(a => a.status === 'active').length,
         inactive: auditors.filter(a => a.status === 'inactive').length,
-        totalAssigned: auditors.reduce((sum, a) => sum + a.assigned, 0),
-        totalCompleted: auditors.reduce((sum, a) => sum + a.completed, 0),
-        totalFindings: auditors.reduce((sum, a) => sum + a.totalFindings, 0),
-        avgRating: avgRating,
-        totalCertifications: totalCertifications
+        totalAssigned: auditors.reduce((sum, a) => sum + (a.assigned || 0), 0),
+        totalCompleted: auditors.reduce((sum, a) => sum + (a.completed || 0), 0),
+        totalFindings: auditors.reduce((sum, a) => sum + (a.totalFindings || 0), 0),
+        avgRating: (auditors.reduce((sum, a) => sum + (a.rating || 0), 0) / (auditors.length || 1)).toFixed(1),
+        totalCertifications: auditors.reduce((sum, a) => sum + (a.certifications?.length || 0), 0)
     };
 
     // Filter
     const filteredAuditors = auditors.filter(a => 
-        a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+        a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.specialization?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // ========== FUNGSI KLIK STATS ==========
-    const handleStatClick = (type) => {
-        let title = '';
-        let items = [];
-        
-        switch(type) {
-            case 'total':
-                title = 'All Auditors';
-                items = auditors;
-                break;
-            case 'active':
-                title = 'Active Auditors';
-                items = auditors.filter(a => a.status === 'active');
-                break;
-            case 'inactive':
-                title = 'Inactive Auditors';
-                items = auditors.filter(a => a.status === 'inactive');
-                break;
-            case 'assigned':
-                title = 'Auditors by Assignments';
-                items = auditors.sort((a, b) => b.assigned - a.assigned);
-                break;
-            case 'completed':
-                title = 'Auditors by Completed Audits';
-                items = auditors.sort((a, b) => b.completed - a.completed);
-                break;
-            case 'findings':
-                title = 'Auditors by Total Findings';
-                items = auditors.sort((a, b) => b.totalFindings - a.totalFindings);
-                break;
-            case 'rating':
-                title = 'Auditors by Rating';
-                items = auditors.sort((a, b) => b.rating - a.rating).map(a => ({
-                    name: a.name,
-                    rating: a.rating + ' ★',
-                    specialization: a.specialization,
-                    experience: a.experience
-                }));
-                break;
-            case 'certifications':
-                title = 'Certifications Overview';
-                items = auditors.flatMap(a => 
-                    a.certifications.map(cert => ({
-                        auditor: a.name,
-                        certification: cert,
-                        specialization: a.specialization
-                    }))
-                );
-                break;
-            default:
-                return;
+    // Handle klik stats
+    const handleStatClick = async (type) => {
+        try {
+            let title = '';
+            let items = [];
+
+            switch(type) {
+                case 'total':
+                    title = 'All Auditors';
+                    items = auditors;
+                    break;
+                case 'active':
+                    title = 'Active Auditors';
+                    items = auditors.filter(a => a.status === 'active');
+                    break;
+                case 'inactive':
+                    title = 'Inactive Auditors';
+                    items = auditors.filter(a => a.status === 'inactive');
+                    break;
+                case 'assigned':
+                    title = 'Auditors by Assignments';
+                    items = [...auditors].sort((a, b) => (b.assigned || 0) - (a.assigned || 0));
+                    break;
+                case 'completed':
+                    title = 'Auditors by Completed Audits';
+                    items = [...auditors].sort((a, b) => (b.completed || 0) - (a.completed || 0));
+                    break;
+                case 'findings':
+                    title = 'Auditors by Total Findings';
+                    items = [...auditors].sort((a, b) => (b.totalFindings || 0) - (a.totalFindings || 0));
+                    break;
+                case 'rating':
+                    title = 'Auditors by Rating';
+                    items = [...auditors].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                    break;
+                default:
+                    return;
+            }
+
+            setModalData({ show: true, title, items });
+        } catch (error) {
+            console.error('Error:', error);
         }
-        
-        setModalData({ show: true, title, items });
     };
 
-    // ========== FUNGSI KLIK BARIS ==========
+    // Handle klik baris
     const handleRowClick = (auditor) => {
         setSelectedAuditor(auditor);
         setShowDetail(true);
     };
 
-    // ========== FUNGSI DELETE ==========
-    const handleDelete = (id, e) => {
+    // Handle delete
+    const handleDelete = async (id, e) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this auditor?')) {
-            setAuditors(auditors.filter(a => a.id !== id));
-            alert('Auditor deleted successfully!');
+            try {
+                await api.delete(`/users/${id}`);
+                fetchAuditors();
+                alert('Auditor deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting auditor:', error);
+                alert('Failed to delete auditor');
+            }
         }
     };
 
-    // ========== FUNGSI EDIT ==========
+    // Handle edit
     const handleEdit = (auditor, e) => {
         e.stopPropagation();
         alert(`Edit auditor: ${auditor.name} (Demo mode)`);
     };
 
-    // ========== MODAL DETAIL ==========
+    // Handle add auditor
+    const handleAddAuditor = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await api.post('/auth/register', {
+                fullname: newAuditor.name,
+                email: newAuditor.email,
+                password: 'default123', // Default password
+                role: 'auditor'
+            });
+            
+            if (response.data.success) {
+                fetchAuditors();
+                setShowAddModal(false);
+                setNewAuditor({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    specialization: 'General',
+                    certifications: '',
+                    experience: '',
+                    education: ''
+                });
+                alert('Auditor added successfully! Default password: default123');
+            }
+        } catch (error) {
+            console.error('Error adding auditor:', error);
+            alert('Failed to add auditor');
+        }
+    };
+
+    // Modal Detail
     const DetailModal = () => {
         if (!showDetail || !selectedAuditor) return null;
 
@@ -199,38 +189,42 @@ const AdminAuditors = () => {
                         <div className="auditor-detail-grid">
                             <div className="detail-section">
                                 <h4>Contact Information</h4>
-                                <div className="detail-row"><label>Email:</label> {selectedAuditor.email}</div>
-                                <div className="detail-row"><label>Phone:</label> {selectedAuditor.phone}</div>
-                                <div className="detail-row"><label>Specialization:</label> {selectedAuditor.specialization}</div>
-                                <div className="detail-row"><label>Experience:</label> {selectedAuditor.experience}</div>
-                                <div className="detail-row"><label>Education:</label> {selectedAuditor.education}</div>
-                                <div className="detail-row"><label>Status:</label> 
-                                    <span className={`status-badge ${selectedAuditor.status}`}>
-                                        {selectedAuditor.status}
+                                <div className="detail-row"><FaEnvelope /> {selectedAuditor.email}</div>
+                                <div className="detail-row"><FaPhone /> {selectedAuditor.phone || '-'}</div>
+                                <div className="detail-row"><FaAward /> Specialization: {selectedAuditor.specialization || 'General'}</div>
+                                <div className="detail-row"><FaGraduationCap /> Education: {selectedAuditor.education || '-'}</div>
+                                <div className="detail-row"><FaChartBar /> Experience: {selectedAuditor.experience || '-'}</div>
+                                <div className="detail-row">Status: 
+                                    <span className={`status-badge ${selectedAuditor.status || 'active'}`}>
+                                        {selectedAuditor.status || 'active'}
                                     </span>
                                 </div>
                             </div>
                             
                             <div className="detail-section">
                                 <h4>Performance</h4>
-                                <div className="detail-row"><label>Assigned Audits:</label> {selectedAuditor.assigned}</div>
-                                <div className="detail-row"><label>Completed Audits:</label> {selectedAuditor.completed}</div>
-                                <div className="detail-row"><label>Total Findings:</label> {selectedAuditor.totalFindings}</div>
-                                <div className="detail-row"><label>Rating:</label> 
+                                <div className="detail-row">Assigned Audits: {selectedAuditor.assigned || 0}</div>
+                                <div className="detail-row">Completed Audits: {selectedAuditor.completed || 0}</div>
+                                <div className="detail-row">Total Findings: {selectedAuditor.totalFindings || 0}</div>
+                                <div className="detail-row">Rating: 
                                     <span className="rating">
-                                        {selectedAuditor.rating} <FaStar className="star" />
+                                        {selectedAuditor.rating || 0} <FaStar className="star" />
                                     </span>
                                 </div>
                             </div>
                             
                             <div className="detail-section full-width">
-                                <h4>Certifications ({selectedAuditor.certifications.length})</h4>
+                                <h4>Certifications</h4>
                                 <div className="cert-list">
-                                    {selectedAuditor.certifications.map((cert, i) => (
-                                        <span key={i} className="cert-badge">
-                                            <FaCertificate /> {cert}
-                                        </span>
-                                    ))}
+                                    {selectedAuditor.certifications?.length ? (
+                                        selectedAuditor.certifications.map((cert, i) => (
+                                            <span key={i} className="cert-badge">
+                                                <FaCertificate /> {cert}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <p>No certifications listed</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -246,7 +240,7 @@ const AdminAuditors = () => {
         );
     };
 
-    // ========== MODAL STATS ==========
+    // Modal Stats
     const StatsModal = () => {
         if (!modalData.show) return null;
 
@@ -255,7 +249,9 @@ const AdminAuditors = () => {
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
                     <div className="modal-header">
                         <h3>{modalData.title}</h3>
-                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>
+                            <FaTimes />
+                        </button>
                     </div>
                     <div className="modal-body">
                         {modalData.items.length === 0 ? (
@@ -271,9 +267,18 @@ const AdminAuditors = () => {
                                 </thead>
                                 <tbody>
                                     {modalData.items.map((item, idx) => (
-                                        <tr key={idx} className="clickable-row">
+                                        <tr key={idx} className="clickable-row"
+                                            onClick={() => {
+                                                if (item.id) {
+                                                    setModalData({...modalData, show: false});
+                                                    handleRowClick(item);
+                                                }
+                                            }}
+                                        >
                                             {Object.values(item).map((val, i) => (
-                                                <td key={i}>{val}</td>
+                                                <td key={i}>
+                                                    {typeof val === 'object' ? JSON.stringify(val) : val?.toString() || '-'}
+                                                </td>
                                             ))}
                                         </tr>
                                     ))}
@@ -286,18 +291,125 @@ const AdminAuditors = () => {
         );
     };
 
+    // Modal Add Auditor
+    const AddAuditorModal = () => {
+        if (!showAddModal) return null;
+
+        return (
+            <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaUserTie /> Add New Auditor</h3>
+                        <button className="close-btn" onClick={() => setShowAddModal(false)}>×</button>
+                    </div>
+                    <form onSubmit={handleAddAuditor}>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Full Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={newAuditor.name}
+                                    onChange={(e) => setNewAuditor({...newAuditor, name: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Email *</label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={newAuditor.email}
+                                    onChange={(e) => setNewAuditor({...newAuditor, email: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Phone</label>
+                                <input
+                                    type="text"
+                                    value={newAuditor.phone}
+                                    onChange={(e) => setNewAuditor({...newAuditor, phone: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Specialization</label>
+                                <select
+                                    value={newAuditor.specialization}
+                                    onChange={(e) => setNewAuditor({...newAuditor, specialization: e.target.value})}
+                                >
+                                    <option value="General">General</option>
+                                    <option value="Network Security">Network Security</option>
+                                    <option value="Web Security">Web Security</option>
+                                    <option value="Cloud Security">Cloud Security</option>
+                                    <option value="Application Security">Application Security</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Experience</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., 5 years"
+                                    value={newAuditor.experience}
+                                    onChange={(e) => setNewAuditor({...newAuditor, experience: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Education</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., Master in Cybersecurity"
+                                    value={newAuditor.education}
+                                    onChange={(e) => setNewAuditor({...newAuditor, education: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Certifications (comma separated)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., CISSP, CISA, CEH"
+                                    value={newAuditor.certifications}
+                                    onChange={(e) => setNewAuditor({...newAuditor, certifications: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-note">
+                                <small>Default password: <strong>default123</strong> (user must change on first login)</small>
+                            </div>
+                        </div>
+                        <div className="modal-actions">
+                            <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                            <button type="submit" className="btn-primary">Add Auditor</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
+    if (loading) {
+        return (
+            <DashboardLayout role="admin">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Loading auditors...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout role="admin">
             <div className="admin-page">
-                {/* Header - TANPA BUTTON ADD */}
+                {/* Header */}
                 <div className="page-header">
                     <div>
                         <h2><FaUserTie /> Auditors Management</h2>
                         <p>Manage security auditors and track their performance</p>
                     </div>
+                    <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+                        <FaPlus /> Add Auditor
+                    </button>
                 </div>
 
-                {/* Stats Cards - SEMUA BISA DI KLIK */}
+                {/* Stats Cards */}
                 <div className="stats-grid">
                     <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
                         <div className="stat-icon purple"><FaUserTie /></div>
@@ -338,7 +450,7 @@ const AdminAuditors = () => {
                         <h3>{stats.avgRating}</h3>
                         <p>Avg Rating</p>
                     </div>
-                    <div className="stat-card clickable" onClick={() => handleStatClick('certifications')}>
+                    <div className="stat-card clickable" onClick={() => {}}>
                         <div className="stat-icon indigo"><FaCertificate /></div>
                         <h3>{stats.totalCertifications}</h3>
                         <p>Certifications</p>
@@ -352,7 +464,7 @@ const AdminAuditors = () => {
                            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
 
-                {/* Table - SETIAP BARIS BISA DI KLIK */}
+                {/* Table */}
                 <div className="table-container">
                     <table className="admin-table">
                         <thead>
@@ -366,22 +478,27 @@ const AdminAuditors = () => {
                                 <th>Rating</th>
                                 <th>Status</th>
                                 <th>Actions</th>
-                            </tr> </thead>
-                                               <tbody>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {filteredAuditors.map(a => (
                                 <tr key={a.id} className="clickable-row" onClick={() => handleRowClick(a)}>
                                     <td><strong>{a.name}</strong></td>
                                     <td>{a.email}</td>
-                                    <td>{a.specialization}</td>
-                                    <td>{a.assigned}</td>
-                                    <td>{a.completed}</td>
-                                    <td>{a.totalFindings}</td>
+                                    <td>{a.specialization || 'General'}</td>
+                                    <td>{a.assigned || 0}</td>
+                                    <td>{a.completed || 0}</td>
+                                    <td>{a.totalFindings || 0}</td>
                                     <td>
                                         <span className="rating-stars">
-                                            {a.rating} <FaStar className="star" />
+                                            {a.rating || 0} <FaStar className="star" />
                                         </span>
                                     </td>
-                                    <td><span className={`status-badge ${a.status}`}>{a.status}</span></td>
+                                    <td>
+                                        <span className={`status-badge ${a.status || 'active'}`}>
+                                            {a.status || 'active'}
+                                        </span>
+                                    </td>
                                     <td onClick={(e) => e.stopPropagation()}>
                                         <button className="icon-btn" onClick={(e) => handleEdit(a, e)}><FaEdit /></button>
                                         <button className="icon-btn" onClick={(e) => handleDelete(a.id, e)}><FaTrash /></button>
@@ -395,6 +512,7 @@ const AdminAuditors = () => {
                 {/* MODALS */}
                 <StatsModal />
                 <DetailModal />
+                <AddAuditorModal />
             </div>
         </DashboardLayout>
     );

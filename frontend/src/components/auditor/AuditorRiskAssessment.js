@@ -1,96 +1,70 @@
-import React, { useState } from 'react';
+// src/components/auditor/AuditorRiskAssessment.js
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
     FaExclamationTriangle, FaSearch, FaPlus, FaEdit, 
-    FaTrash, FaEye, FaFilter, FaBug, FaTimes
+    FaTrash, FaEye, FaFilter, FaBug, FaTimes,
+    FaShieldAlt
 } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './Auditor.css';
 
 const AuditorRiskAssessment = () => {
+    const { user } = useAuth();
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRisk, setFilterRisk] = useState('all');
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedVuln, setSelectedVuln] = useState(null);
+    const [vulnerabilities, setVulnerabilities] = useState([]);
+    const [assets, setAssets] = useState([]);
 
-    // STATE UNTUK FORM (DIPISAH AGAR RINGAN)
+    // STATE UNTUK FORM
     const [formName, setFormName] = useState('');
-    const [formAsset, setFormAsset] = useState('');
+    const [formAssetId, setFormAssetId] = useState('');
     const [formCvss, setFormCvss] = useState('5.0');
     const [formDesc, setFormDesc] = useState('');
     const [formCategory, setFormCategory] = useState('Injection');
     const [formLikelihood, setFormLikelihood] = useState('Medium');
     const [formImpact, setFormImpact] = useState('Medium');
 
-    // DATA VULNERABILITIES
-    const [vulnerabilities, setVulnerabilities] = useState([
-        {
-            id: 1,
-            name: 'SQL Injection',
-            category: 'Injection',
-            asset: 'Web Server',
-            cvss: 9.0,
-            risk: 'Critical',
-            status: 'open',
-            discovered: '2024-02-15',
-            likelihood: 'High',
-            impact: 'Critical',
-            description: 'Attacker can execute arbitrary SQL queries'
-        },
-        {
-            id: 2,
-            name: 'Weak Password Policy',
-            category: 'Broken Authentication',
-            asset: 'HR System',
-            cvss: 7.5,
-            risk: 'High',
-            status: 'in-progress',
-            discovered: '2024-02-10',
-            likelihood: 'High',
-            impact: 'High',
-            description: 'Password policy does not enforce complexity'
-        },
-        {
-            id: 3,
-            name: 'XSS Vulnerability',
-            category: 'Cross-Site Attacks',
-            asset: 'Customer Portal',
-            cvss: 6.5,
-            risk: 'Medium',
-            status: 'open',
-            discovered: '2024-02-12',
-            likelihood: 'Medium',
-            impact: 'Medium',
-            description: 'Malicious scripts can be injected'
-        },
-        {
-            id: 4,
-            name: 'Missing HTTPS',
-            category: 'Sensitive Data Exposure',
-            asset: 'API Gateway',
-            cvss: 8.5,
-            risk: 'Critical',
-            status: 'open',
-            discovered: '2024-02-18',
-            likelihood: 'High',
-            impact: 'Critical',
-            description: 'Data transmitted without encryption'
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // 1. Ambil semua vulnerabilities
+            const vulnsRes = await api.get('/findings/');
+            setVulnerabilities(vulnsRes.data || []);
+            
+            // 2. Ambil semua assets
+            const assetsRes = await api.get('/assets/');
+            setAssets(assetsRes.data || []);
+            
+        } catch (error) {
+            console.error('Error fetching risk assessment data:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
     // HITUNG RISK MATRIX
     const riskMatrix = {
-        critical: vulnerabilities.filter(v => v.risk === 'Critical').length,
-        high: vulnerabilities.filter(v => v.risk === 'High').length,
-        medium: vulnerabilities.filter(v => v.risk === 'Medium').length,
-        low: vulnerabilities.filter(v => v.risk === 'Low').length
+        critical: vulnerabilities.filter(v => v.severity === 'critical').length,
+        high: vulnerabilities.filter(v => v.severity === 'high').length,
+        medium: vulnerabilities.filter(v => v.severity === 'medium').length,
+        low: vulnerabilities.filter(v => v.severity === 'low').length
     };
 
     // FILTER VULNERABILITIES
     const filteredVulns = vulnerabilities.filter(v => {
-        const matchesSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             v.asset.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = filterRisk === 'all' || v.risk.toLowerCase() === filterRisk.toLowerCase();
+        const matchesSearch = v.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             v.asset?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesFilter = filterRisk === 'all' || v.severity?.toLowerCase() === filterRisk.toLowerCase();
         return matchesSearch && matchesFilter;
     });
 
@@ -109,7 +83,7 @@ const AuditorRiskAssessment = () => {
     // RESET FORM
     const resetForm = () => {
         setFormName('');
-        setFormAsset('');
+        setFormAssetId('');
         setFormCvss('5.0');
         setFormDesc('');
         setFormCategory('Injection');
@@ -118,35 +92,49 @@ const AuditorRiskAssessment = () => {
     };
 
     // HANDLE ADD
-    const handleAddVuln = (e) => {
+    const handleAddVuln = async (e) => {
         e.preventDefault();
         
+        const asset = assets.find(a => a.id === parseInt(formAssetId));
         const risk = calculateRisk(formLikelihood, formImpact);
         
-        const vulnToAdd = {
-            id: vulnerabilities.length + 1,
-            name: formName,
-            category: formCategory,
-            asset: formAsset,
-            cvss: parseFloat(formCvss),
-            risk: risk,
-            status: 'open',
-            discovered: new Date().toISOString().split('T')[0],
-            likelihood: formLikelihood,
-            impact: formImpact,
-            description: formDesc
-        };
-        
-        setVulnerabilities([...vulnerabilities, vulnToAdd]);
-        setShowAddModal(false);
-        resetForm();
+        try {
+            const response = await api.post('/findings/', {
+                title: formName,
+                category: formCategory,
+                asset: asset?.name || formAssetId,
+                assetId: parseInt(formAssetId),
+                cvss: parseFloat(formCvss),
+                severity: risk.toLowerCase(),
+                status: 'open',
+                discovered: new Date().toISOString().split('T')[0],
+                likelihood: formLikelihood,
+                impact: formImpact,
+                description: formDesc,
+                company_id: asset?.company_id
+            });
+            
+            if (response.data) {
+                fetchData();
+                setShowAddModal(false);
+                resetForm();
+            }
+        } catch (error) {
+            console.error('Error adding vulnerability:', error);
+            alert('Failed to add vulnerability');
+        }
     };
 
     // HANDLE DELETE
-    const handleDelete = (id, e) => {
+    const handleDelete = async (id, e) => {
         e.stopPropagation();
         if (window.confirm('Delete this vulnerability?')) {
-            setVulnerabilities(vulnerabilities.filter(v => v.id !== id));
+            try {
+                await api.delete(`/findings/${id}`);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting vulnerability:', error);
+            }
         }
     };
 
@@ -158,13 +146,24 @@ const AuditorRiskAssessment = () => {
 
     // GET RISK COLOR
     const getRiskColor = (risk) => {
-        switch(risk.toLowerCase()) {
+        switch(risk?.toLowerCase()) {
             case 'critical': return '#b91c1c';
             case 'high': return '#b45309';
             case 'medium': return '#b68b40';
             default: return '#166534';
         }
     };
+
+    if (loading) {
+        return (
+            <DashboardLayout role="auditor">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Loading risk assessment...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout role="auditor">
@@ -244,20 +243,20 @@ const AuditorRiskAssessment = () => {
                         <tbody>
                             {filteredVulns.map(v => (
                                 <tr key={v.id}>
-                                    <td><strong>{v.name}</strong></td>
-                                    <td>{v.category}</td>
+                                    <td><strong>{v.title}</strong></td>
+                                    <td>{v.category || 'General'}</td>
                                     <td>{v.asset}</td>
-                                    <td>{v.cvss}</td>
+                                    <td>{v.cvss || 'N/A'}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px',
                                             borderRadius: '12px',
                                             fontSize: '11px',
                                             fontWeight: 'bold',
-                                            background: `${getRiskColor(v.risk)}20`,
-                                            color: getRiskColor(v.risk)
+                                            background: `${getRiskColor(v.severity)}20`,
+                                            color: getRiskColor(v.severity)
                                         }}>
-                                            {v.risk}
+                                            {v.severity}
                                         </span>
                                     </td>
                                     <td>
@@ -290,11 +289,11 @@ const AuditorRiskAssessment = () => {
                         <div className="modal-content" onClick={e => e.stopPropagation()}>
                             <div className="modal-header">
                                 <h3><FaBug /> Add New Vulnerability</h3>
-                                <button className="close-btn" onClick={() => { setShowAddModal(false); resetForm(); }}>×</button>
+                                    <button className="close-btn" onClick={() => { setShowAddModal(false); resetForm(); }}>×</button>
                             </div>
                             
                             <form onSubmit={handleAddVuln}>
-                                {/* NAME - BISA NGETIK */}
+                                {/* NAME */}
                                 <div className="form-group">
                                     <label>Vulnerability Name *</label>
                                     <input
@@ -307,52 +306,63 @@ const AuditorRiskAssessment = () => {
                                     />
                                 </div>
 
-                                {/* CATEGORY - DROPDOWN */}
+                                {/* CATEGORY */}
                                 <div className="form-group">
                                     <label>Category</label>
                                     <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
                                         <option value="Injection">Injection</option>
                                         <option value="Broken Authentication">Broken Authentication</option>
                                         <option value="Sensitive Data Exposure">Sensitive Data Exposure</option>
-                                        <option value="Cross-Site Attacks">Cross-Site Attacks</option>
+                                        <option value="XML External Entities">XML External Entities (XXE)</option>
+                                        <option value="Broken Access Control">Broken Access Control</option>
+                                        <option value="Security Misconfiguration">Security Misconfiguration</option>
+                                        <option value="Cross-Site Scripting (XSS)">Cross-Site Scripting (XSS)</option>
+                                        <option value="Insecure Deserialization">Insecure Deserialization</option>
+                                        <option value="Using Components with Known Vulnerabilities">Using Components with Known Vulnerabilities</option>
+                                        <option value="Insufficient Logging & Monitoring">Insufficient Logging & Monitoring</option>
                                     </select>
                                 </div>
 
-                                {/* ASSET - BISA NGETIK */}
+                                {/* ASSET */}
                                 <div className="form-group">
                                     <label>Asset *</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         required
-                                        value={formAsset}
-                                        onChange={(e) => setFormAsset(e.target.value)}
-                                        placeholder="e.g., Web Server"
-                                    />
+                                        value={formAssetId}
+                                        onChange={(e) => setFormAssetId(e.target.value)}
+                                    >
+                                        <option value="">Select Asset</option>
+                                        {assets.map(asset => (
+                                            <option key={asset.id} value={asset.id}>
+                                                {asset.name} ({asset.type}) - {asset.companyName || 'No Company'}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="form-row">
-                                    {/* LIKELIHOOD - DROPDOWN */}
+                                    {/* LIKELIHOOD */}
                                     <div className="form-group">
                                         <label>Likelihood</label>
                                         <select value={formLikelihood} onChange={(e) => setFormLikelihood(e.target.value)}>
-                                            <option value="Low">Low</option>
-                                            <option value="Medium">Medium</option>
-                                            <option value="High">High</option>
+                                            <option value="Low">Low (1)</option>
+                                            <option value="Medium">Medium (2)</option>
+                                            <option value="High">High (3)</option>
                                         </select>
                                     </div>
 
-                                    {/* IMPACT - DROPDOWN */}
+                                    {/* IMPACT */}
                                     <div className="form-group">
                                         <label>Impact</label>
                                         <select value={formImpact} onChange={(e) => setFormImpact(e.target.value)}>
-                                            <option value="Low">Low</option>
-                                            <option value="Medium">Medium</option>
-                                            <option value="High">High</option>
-                                            <option value="Critical">Critical</option>
+                                            <option value="Low">Low (1)</option>
+                                            <option value="Medium">Medium (2)</option>
+                                            <option value="High">High (3)</option>
+                                            <option value="Critical">Critical (4)</option>
                                         </select>
                                     </div>
 
-                                    {/* CVSS - BISA NGETIK ANGKA */}
+                                    {/* CVSS */}
                                     <div className="form-group">
                                         <label>CVSS Score</label>
                                         <input
@@ -366,15 +376,25 @@ const AuditorRiskAssessment = () => {
                                     </div>
                                 </div>
 
-                                {/* DESCRIPTION - BISA NGETIK PANJANG */}
+                                {/* DESCRIPTION */}
                                 <div className="form-group">
                                     <label>Description</label>
                                     <textarea
                                         rows="3"
                                         value={formDesc}
                                         onChange={(e) => setFormDesc(e.target.value)}
-                                        placeholder="Describe the vulnerability..."
+                                        placeholder="Describe the vulnerability, impact, and remediation steps..."
                                     />
+                                </div>
+
+                                {/* RISK PREVIEW */}
+                                <div className="risk-preview">
+                                    <h4>Risk Preview</h4>
+                                    <p>Likelihood: <strong>{formLikelihood}</strong> × Impact: <strong>{formImpact}</strong></p>
+                                    <p>Calculated Risk: <strong style={{
+                                        color: getRiskColor(calculateRisk(formLikelihood, formImpact)),
+                                        fontSize: '16px'
+                                    }}>{calculateRisk(formLikelihood, formImpact)}</strong></p>
                                 </div>
 
                                 <div className="modal-actions">
@@ -395,20 +415,56 @@ const AuditorRiskAssessment = () => {
                     <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
                         <div className="modal-content" onClick={e => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3><FaBug /> {selectedVuln.name}</h3>
+                                <h3><FaBug /> {selectedVuln.title}</h3>
                                 <button className="close-btn" onClick={() => setShowDetailModal(false)}>×</button>
                             </div>
                             
                             <div className="modal-body">
-                                <p><strong>Category:</strong> {selectedVuln.category}</p>
-                                <p><strong>Asset:</strong> {selectedVuln.asset}</p>
-                                <p><strong>Risk:</strong> {selectedVuln.risk}</p>
-                                <p><strong>CVSS:</strong> {selectedVuln.cvss}</p>
-                                <p><strong>Description:</strong> {selectedVuln.description}</p>
+                                <div className="detail-grid">
+                                    <div className="detail-row">
+                                        <label>Category:</label>
+                                        <span>{selectedVuln.category || 'General'}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Asset:</label>
+                                        <span>{selectedVuln.asset}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Risk:</label>
+                                        <span style={{color: getRiskColor(selectedVuln.severity), fontWeight: 'bold'}}>
+                                            {selectedVuln.severity?.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>CVSS:</label>
+                                        <span>{selectedVuln.cvss || 'N/A'}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Status:</label>
+                                        <span>{selectedVuln.status}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Discovered:</label>
+                                        <span>{selectedVuln.discovered}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Likelihood:</label>
+                                        <span>{selectedVuln.likelihood || 'Medium'}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Impact:</label>
+                                        <span>{selectedVuln.impact || 'Medium'}</span>
+                                    </div>
+                                    <div className="detail-row full-width">
+                                        <label>Description:</label>
+                                        <p>{selectedVuln.description || 'No description provided'}</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="modal-actions">
                                 <button className="btn-secondary" onClick={() => setShowDetailModal(false)}>Close</button>
+                                <button className="btn-primary"><FaEdit /> Edit</button>
                             </div>
                         </div>
                     </div>
@@ -419,3 +475,4 @@ const AuditorRiskAssessment = () => {
 };
 
 export default AuditorRiskAssessment;
+                                
