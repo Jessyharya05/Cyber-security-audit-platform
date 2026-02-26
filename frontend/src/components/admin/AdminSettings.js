@@ -1,361 +1,194 @@
-// src/components/admin/AdminSettings.js
-
 import React, { useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
-  FaCog, 
-  FaShieldAlt, 
-  FaBell, 
-  FaLock,
-  FaGlobe,
-  FaEnvelope,
-  FaSave,
-  FaPalette,
-  FaLanguage,
-  FaDesktop,
-  FaUserShield,
-  FaHistory,
-  FaEye,
-  FaSlidersH
+    FaUsers, FaUserTie, FaUserCheck, FaSearch,
+    FaPlus, FaEdit, FaTrash, FaEye, FaKey,
+    FaBan, FaCheckCircle, FaExclamationTriangle
 } from 'react-icons/fa';
 import './Admin.css';
 
-const AdminSettings = () => {
-  const [settings, setSettings] = useState({
-    // General Settings
-    siteName: 'CyberGuard',
-    siteUrl: 'https://cyberguard.com',
-    adminEmail: 'admin@cyberguard.com',
-    language: 'English',
-    
-    // Security Settings
-    mfaRequired: true,
-    passwordExpiry: 90,
-    sessionTimeout: 30,
-    maxLoginAttempts: 5,
-    
-    // Notification Settings
-    emailNotifications: true,
-    auditAlerts: true,
-    findingAlerts: true,
-    reportNotifications: false,
-    
-    // Audit Settings
-    defaultFramework: 'NIST CSF 2.0',
-    autoReminders: true,
-    reminderDays: 7,
-    
-    // Appearance
-    theme: 'light',
-    sidebarCollapsed: false
-  });
-
-  const [activeTab, setActiveTab] = useState('general');
-
-  const handleChange = (e) => {
-    setSettings({
-      ...settings,
-      [e.target.name]: e.target.value
+const AdminUsers = () => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [modalData, setModalData] = useState({
+        show: false,
+        title: '',
+        items: []
     });
-  };
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [showDetail, setShowDetail] = useState(false);
 
-  const handleToggle = (setting) => {
-    setSettings({
-      ...settings,
-      [setting]: !settings[setting]
-    });
-  };
+    // Data users
+    const [users] = useState([
+        { id: 1, name: 'John Smith', email: 'john@techcorp.com', role: 'auditee', company: 'Tech Corp', status: 'active', lastLogin: '2024-02-20' },
+        { id: 2, name: 'Sarah Johnson', email: 'sarah@finance.com', role: 'auditee', company: 'Finance Ltd', status: 'active', lastLogin: '2024-02-19' },
+        { id: 3, name: 'Dr. Robert Wilson', email: 'robert@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-21' },
+        { id: 4, name: 'Lisa Anderson', email: 'lisa@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-20' },
+        { id: 5, name: 'Michael Chen', email: 'michael@cyber.com', role: 'auditor', company: 'CyberGuard', status: 'active', lastLogin: '2024-02-19' },
+        { id: 6, name: 'Emily Davis', email: 'emily@healthcare.com', role: 'auditee', company: 'HealthCare Inc', status: 'inactive', lastLogin: '2024-02-01' },
+        { id: 7, name: 'David Brown', email: 'david@retail.com', role: 'auditee', company: 'Retail Solutions', status: 'active', lastLogin: '2024-02-18' }
+    ]);
 
-  const handleSave = () => {
-    alert('Settings saved successfully!');
-  };
+    // Stats
+    const stats = {
+        total: users.length,
+        auditors: users.filter(u => u.role === 'auditor').length,
+        auditees: users.filter(u => u.role === 'auditee').length,
+        active: users.filter(u => u.status === 'active').length
+    };
 
-  return (
-    <DashboardLayout role="admin">
-      <div className="admin-page">
-        {/* Header - Sesuai gambar */}
-        <div className="page-header">
-          <div>
-            <h2><FaCog /> System Settings</h2>
-            <p className="header-subtitle">Configure platform settings and preferences</p>
-          </div>
-          <button className="btn-primary" onClick={handleSave}>
-            <FaSave /> Save Changes
-          </button>
-        </div>
+    // Filter
+    const filteredUsers = users.filter(u => 
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-        {/* Settings Tabs - Sesuai gambar */}
-        <div className="settings-tabs">
-          <button 
-            className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`}
-            onClick={() => setActiveTab('general')}
-          >
-            <FaGlobe /> General
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'security' ? 'active' : ''}`}
-            onClick={() => setActiveTab('security')}
-          >
-            <FaLock /> Security
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'notifications' ? 'active' : ''}`}
-            onClick={() => setActiveTab('notifications')}
-          >
-            <FaBell /> Notifications
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
-            onClick={() => setActiveTab('audit')}
-          >
-            <FaShieldAlt /> Audit
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'appearance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('appearance')}
-          >
-            <FaPalette /> Appearance
-          </button>
-        </div>
+    // Handle klik stats
+    const handleStatClick = (type) => {
+        let title = '';
+        let items = [];
+        if (type === 'total') {
+            title = 'All Users';
+            items = users;
+        } else if (type === 'auditors') {
+            title = 'Auditors';
+            items = users.filter(u => u.role === 'auditor');
+        } else if (type === 'auditees') {
+            title = 'Auditees';
+            items = users.filter(u => u.role === 'auditee');
+        } else if (type === 'active') {
+            title = 'Active Users';
+            items = users.filter(u => u.status === 'active');
+        }
+        setModalData({ show: true, title, items });
+    };
 
-        {/* Settings Content */}
-        <div className="settings-content">
-          {/* General Settings - Sesuai gambar */}
-          {activeTab === 'general' && (
-            <div className="settings-section">
-              <h3>General Settings</h3>
-              
-              <div className="settings-grid">
-                <div className="setting-item">
-                  <label>Site Name</label>
-                  <div className="setting-value">
-                    <input
-                      type="text"
-                      name="siteName"
-                      value={settings.siteName}
-                      onChange={handleChange}
-                      placeholder="CyberGuard"
-                    />
-                  </div>
+    // Handle klik baris
+    const handleRowClick = (user) => {
+        setSelectedUser(user);
+        setShowDetail(true);
+    };
+
+    // Modal Detail
+    const DetailModal = () => {
+        if (!showDetail || !selectedUser) return null;
+
+        return (
+            <div className="modal-overlay" onClick={() => setShowDetail(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaUsers /> {selectedUser.name}</h3>
+                        <button className="close-btn" onClick={() => setShowDetail(false)}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        <div className="detail-row"><label>Email:</label> {selectedUser.email}</div>
+                        <div className="detail-row"><label>Role:</label> {selectedUser.role}</div>
+                        <div className="detail-row"><label>Company:</label> {selectedUser.company}</div>
+                        <div className="detail-row"><label>Status:</label> 
+                            <span className={`status-badge ${selectedUser.status}`}>{selectedUser.status}</span>
+                        </div>
+                        <div className="detail-row"><label>Last Login:</label> {selectedUser.lastLogin}</div>
+                    </div>
                 </div>
-                
-                <div className="setting-item">
-                  <label>Site URL</label>
-                  <div className="setting-value">
-                    <input
-                      type="url"
-                      name="siteUrl"
-                      value={settings.siteUrl}
-                      onChange={handleChange}
-                      placeholder="https://cyberguard.com"
-                    />
-                  </div>
-                </div>
-                
-                <div className="setting-item">
-                  <label>Admin Email</label>
-                  <div className="setting-value">
-                    <input
-                      type="email"
-                      name="adminEmail"
-                      value={settings.adminEmail}
-                      onChange={handleChange}
-                      placeholder="admin@cyberguard.com"
-                    />
-                  </div>
-                </div>
-                
-                <div className="setting-item">
-                  <label>Language</label>
-                  <div className="setting-value">
-                    <select name="language" value={settings.language} onChange={handleChange}>
-                      <option value="English">English</option>
-                      <option value="Indonesian">Indonesian</option>
-                      <option value="Spanish">Spanish</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
             </div>
-          )}
+        );
+    };
 
-          {/* Security Settings */}
-          {activeTab === 'security' && (
-            <div className="settings-section">
-              <h3>Security Settings</h3>
-              
-              <div className="settings-grid">
-                <div className="setting-item toggle">
-                  <label>Multi-Factor Authentication</label>
-                  <button 
-                    className={`toggle-btn ${settings.mfaRequired ? 'active' : ''}`}
-                    onClick={() => handleToggle('mfaRequired')}
-                  >
-                    {settings.mfaRequired ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                
-                <div className="setting-item">
-                  <label>Password Expiry (days)</label>
-                  <input
-                    type="number"
-                    name="passwordExpiry"
-                    value={settings.passwordExpiry}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="setting-item">
-                  <label>Session Timeout (minutes)</label>
-                  <input
-                    type="number"
-                    name="sessionTimeout"
-                    value={settings.sessionTimeout}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="setting-item">
-                  <label>Max Login Attempts</label>
-                  <input
-                    type="number"
-                    name="maxLoginAttempts"
-                    value={settings.maxLoginAttempts}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+    // Modal Stats
+    const StatsModal = () => {
+        if (!modalData.show) return null;
 
-          {/* Notifications Settings */}
-          {activeTab === 'notifications' && (
-            <div className="settings-section">
-              <h3>Notification Settings</h3>
-              
-              <div className="settings-grid">
-                <div className="setting-item toggle">
-                  <label>Email Notifications</label>
-                  <button 
-                    className={`toggle-btn ${settings.emailNotifications ? 'active' : ''}`}
-                    onClick={() => handleToggle('emailNotifications')}
-                  >
-                    {settings.emailNotifications ? 'ON' : 'OFF'}
-                  </button>
+        return (
+            <div className="modal-overlay" onClick={() => setModalData({...modalData, show: false})}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3>{modalData.title}</h3>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        <table className="detail-table">
+                            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+                            <tbody>
+                                {modalData.items.map(u => (
+                                    <tr key={u.id} onClick={() => { setModalData({...modalData, show: false}); handleRowClick(u); }}>
+                                        <td>{u.name}</td>
+                                        <td>{u.email}</td>
+                                        <td>{u.role}</td>
+                                        <td><span className={`status-badge ${u.status}`}>{u.status}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                
-                <div className="setting-item toggle">
-                  <label>Audit Alerts</label>
-                  <button 
-                    className={`toggle-btn ${settings.auditAlerts ? 'active' : ''}`}
-                    onClick={() => handleToggle('auditAlerts')}
-                  >
-                    {settings.auditAlerts ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                
-                <div className="setting-item toggle">
-                  <label>Finding Alerts</label>
-                  <button 
-                    className={`toggle-btn ${settings.findingAlerts ? 'active' : ''}`}
-                    onClick={() => handleToggle('findingAlerts')}
-                  >
-                    {settings.findingAlerts ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                
-                <div className="setting-item toggle">
-                  <label>Report Notifications</label>
-                  <button 
-                    className={`toggle-btn ${settings.reportNotifications ? 'active' : ''}`}
-                    onClick={() => handleToggle('reportNotifications')}
-                  >
-                    {settings.reportNotifications ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-              </div>
             </div>
-          )}
+        );
+    };
 
-          {/* Audit Settings */}
-          {activeTab === 'audit' && (
-            <div className="settings-section">
-              <h3>Audit Settings</h3>
-              
-              <div className="settings-grid">
-                <div className="setting-item">
-                  <label>Default Framework</label>
-                  <select name="defaultFramework" value={settings.defaultFramework} onChange={handleChange}>
-                    <option value="NIST CSF 2.0">NIST CSF 2.0</option>
-                    <option value="ISO 27001">ISO 27001</option>
-                    <option value="COBIT">COBIT</option>
-                  </select>
+    return (
+        <DashboardLayout role="admin">
+            <div className="admin-page">
+                <div className="page-header">
+                    <h2><FaUsers /> Users Management</h2>
+                    <button className="btn-primary"><FaPlus /> Add User</button>
                 </div>
-                
-                <div className="setting-item toggle">
-                  <label>Auto Reminders</label>
-                  <button 
-                    className={`toggle-btn ${settings.autoReminders ? 'active' : ''}`}
-                    onClick={() => handleToggle('autoReminders')}
-                  >
-                    {settings.autoReminders ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                
-                <div className="setting-item">
-                  <label>Reminder Days Before Due</label>
-                  <input
-                    type="number"
-                    name="reminderDays"
-                    value={settings.reminderDays}
-                    onChange={handleChange}
-                    disabled={!settings.autoReminders}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Appearance Settings */}
-          {activeTab === 'appearance' && (
-            <div className="settings-section">
-              <h3>Appearance Settings</h3>
-              
-              <div className="settings-grid">
-                <div className="setting-item">
-                  <label>Theme</label>
-                  <select name="theme" value={settings.theme} onChange={handleChange}>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="system">System Default</option>
-                  </select>
+                {/* Stats Cards - BISA DI KLIK */}
+                <div className="stats-grid">
+                    <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
+                        <div className="stat-icon blue"><FaUsers /></div>
+                        <h3>{stats.total}</h3>
+                        <p>Total Users</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('auditors')}>
+                        <div className="stat-icon purple"><FaUserTie /></div>
+                        <h3>{stats.auditors}</h3>
+                        <p>Auditors</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('auditees')}>
+                        <div className="stat-icon green"><FaUserCheck /></div>
+                        <h3>{stats.auditees}</h3>
+                        <p>Auditees</p>
+                    </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('active')}>
+                        <div className="stat-icon teal"><FaCheckCircle /></div>
+                        <h3>{stats.active}</h3>
+                        <p>Active</p>
+                    </div>
                 </div>
-                
-                <div className="setting-item toggle">
-                  <label>Collapse Sidebar by Default</label>
-                  <button 
-                    className={`toggle-btn ${settings.sidebarCollapsed ? 'active' : ''}`}
-                    onClick={() => handleToggle('sidebarCollapsed')}
-                  >
-                    {settings.sidebarCollapsed ? 'ON' : 'OFF'}
-                  </button>
+
+                {/* Search */}
+                <div className="search-bar">
+                    <FaSearch className="search-icon" />
+                    <input placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
-              </div>
-              
-              <div className="theme-preview">
-                <div className="preview-light">
-                  <FaDesktop /> Light Theme Preview
+
+                {/* Table */}
+                <div className="table-container">
+                    <table className="admin-table">
+                        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Company</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {filteredUsers.map(u => (
+                                <tr key={u.id} className="clickable-row" onClick={() => handleRowClick(u)}>
+                                    <td>{u.name}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.role}</td>
+                                    <td>{u.company}</td>
+                                    <td><span className={`status-badge ${u.status}`}>{u.status}</span></td>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                        <button className="icon-btn"><FaEdit /></button>
+                                        <button className="icon-btn"><FaTrash /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-                <div className="preview-dark">
-                  <FaEye /> Dark Theme Preview
-                </div>
-              </div>
+
+                <StatsModal />
+                <DetailModal />
             </div>
-          )}
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+        </DashboardLayout>
+    );
 };
 
-export default AdminSettings;
+export default AdminUsers;

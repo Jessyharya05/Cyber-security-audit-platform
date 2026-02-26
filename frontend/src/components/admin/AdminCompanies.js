@@ -1,327 +1,213 @@
-// src/components/admin/AdminCompanies.js
-
 import React, { useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import { 
-  FaBuilding, 
-  FaSearch, 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaEye,
-  FaDownload,
-  FaFilter,
-  FaChartBar,
-  FaUsers,
-  FaServer,
-  FaShieldAlt,
-  FaExclamationTriangle,
-  FaCheckCircle
+    FaBuilding, FaSearch, FaPlus, FaEdit, FaTrash, 
+    FaEye, FaDownload, FaFilter, FaCheckCircle,
+    FaExclamationTriangle, FaTimesCircle, FaArrowUp,
+    FaArrowDown
 } from 'react-icons/fa';
 import './Admin.css';
 
 const AdminCompanies = () => {
-  const [companies, setCompanies] = useState([
-    { 
-      id: 1, 
-      name: 'Tech Corp', 
-      email: 'admin@techcorp.com',
-      sector: 'Technology',
-      employees: 150, 
-      assets: 45, 
-      status: 'active', 
-      compliance: 82, 
-      exposure: 'Medium',
-      criticalFindings: 2,
-      highFindings: 5,
-      mediumFindings: 8,
-      lastAudit: '2024-02-15',
-      registrationDate: '2024-01-10'
-    },
-    { 
-      id: 2, 
-      name: 'Finance Ltd', 
-      email: 'contact@finance.com',
-      sector: 'Finance',
-      employees: 80, 
-      assets: 23, 
-      status: 'active', 
-      compliance: 64, 
-      exposure: 'High',
-      criticalFindings: 3,
-      highFindings: 4,
-      mediumFindings: 6,
-      lastAudit: '2024-02-10',
-      registrationDate: '2024-01-15'
-    },
-    { 
-      id: 3, 
-      name: 'HealthCare Inc', 
-      email: 'info@healthcare.com',
-      sector: 'Healthcare',
-      employees: 200, 
-      assets: 67, 
-      status: 'warning', 
-      compliance: 45, 
-      exposure: 'High',
-      criticalFindings: 5,
-      highFindings: 7,
-      mediumFindings: 9,
-      lastAudit: '2024-02-01',
-      registrationDate: '2024-01-05'
-    },
-    { 
-      id: 4, 
-      name: 'EduGlobal', 
-      email: 'admin@eduglobal.com',
-      sector: 'Education',
-      employees: 45, 
-      assets: 34, 
-      status: 'active', 
-      compliance: 91, 
-      exposure: 'Low',
-      criticalFindings: 0,
-      highFindings: 1,
-      mediumFindings: 3,
-      lastAudit: '2024-02-20',
-      registrationDate: '2024-01-20'
-    },
-    { 
-      id: 5, 
-      name: 'Retail Solutions', 
-      email: 'support@retail.com',
-      sector: 'Retail',
-      employees: 120, 
-      assets: 56, 
-      status: 'inactive', 
-      compliance: 38, 
-      exposure: 'Medium',
-      criticalFindings: 4,
-      highFindings: 6,
-      mediumFindings: 5,
-      lastAudit: '2024-01-25',
-      registrationDate: '2023-12-15'
-    }
-  ]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [modalData, setModalData] = useState({
+        show: false,
+        title: '',
+        items: []
+    });
+    const [selectedCompany, setSelectedCompany] = useState(null);
+    const [showDetail, setShowDetail] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+    // Data companies
+    const [companies] = useState([
+        { id: 1, name: 'Tech Corp', email: 'admin@techcorp.com', sector: 'Technology', employees: 150, assets: 45, status: 'active', compliance: 82, exposure: 'Medium' },
+        { id: 2, name: 'Finance Ltd', email: 'contact@finance.com', sector: 'Finance', employees: 80, assets: 23, status: 'active', compliance: 64, exposure: 'High' },
+        { id: 3, name: 'HealthCare Inc', email: 'info@healthcare.com', sector: 'Healthcare', employees: 200, assets: 67, status: 'warning', compliance: 45, exposure: 'High' },
+        { id: 4, name: 'EduGlobal', email: 'admin@eduglobal.com', sector: 'Education', employees: 45, assets: 34, status: 'active', compliance: 91, exposure: 'Low' },
+        { id: 5, name: 'Retail Solutions', email: 'support@retail.com', sector: 'Retail', employees: 120, assets: 56, status: 'inactive', compliance: 38, exposure: 'Medium' },
+        { id: 6, name: 'StartUp Tech', email: 'info@startup.com', sector: 'Technology', employees: 25, assets: 12, status: 'active', compliance: 95, exposure: 'Low' }
+    ]);
 
-  const filteredCompanies = companies.filter(company => {
-    const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         company.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || company.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
+    // Stats
+    const stats = {
+        total: companies.length,
+        active: companies.filter(c => c.status === 'active').length,
+        warning: companies.filter(c => c.status === 'warning').length,
+        inactive: companies.filter(c => c.status === 'inactive').length
+    };
 
-  const handleViewDetails = (company) => {
-    setSelectedCompany(company);
-    setShowDetails(true);
-  };
+    // Filter
+    const filteredCompanies = companies.filter(c => {
+        const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           c.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchFilter = filterStatus === 'all' || c.status === filterStatus;
+        return matchSearch && matchFilter;
+    });
 
-  return (
-    <DashboardLayout role="admin">
-      <div className="admin-page">
-        {/* Header */}
-        <div className="page-header">
-          <div>
-            <h2><FaBuilding /> Companies Management</h2>
-            <p>Manage all registered companies and monitor their compliance</p>
-          </div>
-          <div className="header-actions">
-            <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-              <FaPlus /> Add Company
-            </button>
-            <button className="btn-secondary">
-              <FaDownload /> Export List
-            </button>
-          </div>
-        </div>
+    // Handle klik stats
+    const handleStatClick = (status) => {
+        let title = '';
+        let items = [];
+        if (status === 'total') {
+            title = 'All Companies';
+            items = companies;
+        } else {
+            title = `${status.charAt(0).toUpperCase() + status.slice(1)} Companies`;
+            items = companies.filter(c => c.status === status);
+        }
+        setModalData({ show: true, title, items });
+    };
 
-        {/* Stats Cards KHUSUS COMPANIES */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon blue">
-              <FaBuilding />
-            </div>
-            <div className="stat-content">
-              <h3>{companies.length}</h3>
-              <p>Total Companies</p>
-            </div>
-            <div className="stat-trend">+2 this month</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon green">
-              <FaCheckCircle />
-            </div>
-            <div className="stat-content">
-              <h3>{companies.filter(c => c.status === 'active').length}</h3>
-              <p>Active</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon orange">
-              <FaExclamationTriangle />
-            </div>
-            <div className="stat-content">
-              <h3>{companies.reduce((sum, c) => sum + c.criticalFindings, 0)}</h3>
-              <p>Critical Findings</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon purple">
-              <FaShieldAlt />
-            </div>
-            <div className="stat-content">
-              <h3>{Math.round(companies.reduce((sum, c) => sum + c.compliance, 0) / companies.length)}%</h3>
-              <p>Avg Compliance</p>
-            </div>
-          </div>
-        </div>
+    // Handle klik baris
+    const handleRowClick = (company) => {
+        setSelectedCompany(company);
+        setShowDetail(true);
+    };
 
-        {/* Search & Filter */}
-        <div className="search-filter-bar">
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search companies..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="filter-box">
-            <FaFilter className="filter-icon" />
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="warning">Warning</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
+    // Modal Detail
+    const DetailModal = () => {
+        if (!showDetail || !selectedCompany) return null;
 
-        {/* Companies Table - KHUSUS data company */}
-        <div className="table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Company</th>
-                <th>Sector</th>
-                <th>Employees</th>
-                <th>Assets</th>
-                <th>Compliance</th>
-                <th>Findings</th>
-                <th>Exposure</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCompanies.map(company => (
-                <tr key={company.id}>
-                  <td>
-                    <strong>{company.name}</strong>
-                    <div className="text-small">{company.email}</div>
-                  </td>
-                  <td>{company.sector}</td>
-                  <td>{company.employees}</td>
-                  <td>{company.assets}</td>
-                  <td>
-                    <div className="progress-cell">
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{width: `${company.compliance}%`}}></div>
-                      </div>
-                      <span>{company.compliance}%</span>
+        return (
+            <div className="modal-overlay" onClick={() => setShowDetail(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3><FaBuilding /> {selectedCompany.name}</h3>
+                        <button className="close-btn" onClick={() => setShowDetail(false)}>×</button>
                     </div>
-                  </td>
-                  <td>
-                    <div className="findings-stack">
-                      <span className="critical-badge-small">{company.criticalFindings} C</span>
-                      <span className="high-badge-small">{company.highFindings} H</span>
-                      <span className="medium-badge-small">{company.mediumFindings} M</span>
+                    <div className="modal-body">
+                        <div className="detail-row">
+                            <label>Email:</label> {selectedCompany.email}
+                        </div>
+                        <div className="detail-row">
+                            <label>Sector:</label> {selectedCompany.sector}
+                        </div>
+                        <div className="detail-row">
+                            <label>Employees:</label> {selectedCompany.employees}
+                        </div>
+                        <div className="detail-row">
+                            <label>Assets:</label> {selectedCompany.assets}
+                        </div>
+                        <div className="detail-row">
+                            <label>Status:</label> 
+                            <span className={`status-badge ${selectedCompany.status}`}>
+                                {selectedCompany.status}
+                            </span>
+                        </div>
+                        <div className="detail-row">
+                            <label>Compliance:</label> {selectedCompany.compliance}%
+                        </div>
+                        <div className="detail-row">
+                            <label>Exposure:</label> 
+                            <span className={`exposure-badge ${selectedCompany.exposure.toLowerCase()}`}>
+                                {selectedCompany.exposure}
+                            </span>
+                        </div>
                     </div>
-                  </td>
-                  <td>
-                    <span className={`exposure-badge ${company.exposure.toLowerCase()}`}>
-                      {company.exposure}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${company.status}`}>
-                      {company.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="icon-btn" onClick={() => handleViewDetails(company)}><FaEye /></button>
-                    <button className="icon-btn"><FaEdit /></button>
-                    <button className="icon-btn"><FaTrash /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </div>
+            </div>
+        );
+    };
 
-        {/* Company Details Modal - Fitur KHUSUS Companies */}
-        {showDetails && selectedCompany && (
-          <div className="modal-overlay" onClick={() => setShowDetails(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h3><FaBuilding /> {selectedCompany.name}</h3>
-              
-              <div className="company-details">
-                <div className="detail-section">
-                  <h4>Company Information</h4>
-                  <div className="detail-grid">
-                    <div><label>Email:</label> {selectedCompany.email}</div>
-                    <div><label>Sector:</label> {selectedCompany.sector}</div>
-                    <div><label>Employees:</label> {selectedCompany.employees}</div>
-                    <div><label>Assets:</label> {selectedCompany.assets}</div>
-                    <div><label>Registered:</label> {selectedCompany.registrationDate}</div>
-                    <div><label>Last Audit:</label> {selectedCompany.lastAudit}</div>
-                  </div>
+    // Modal Stats
+    const StatsModal = () => {
+        if (!modalData.show) return null;
+
+        return (
+            <div className="modal-overlay" onClick={() => setModalData({...modalData, show: false})}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h3>{modalData.title}</h3>
+                        <button className="close-btn" onClick={() => setModalData({...modalData, show: false})}>×</button>
+                    </div>
+                    <div className="modal-body">
+                        <table className="detail-table">
+                            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Status</th><th>Compliance</th></tr></thead>
+                            <tbody>
+                                {modalData.items.map(c => (
+                                    <tr key={c.id} onClick={() => { setModalData({...modalData, show: false}); handleRowClick(c); }}>
+                                        <td>#{c.id}</td>
+                                        <td>{c.name}</td>
+                                        <td>{c.email}</td>
+                                        <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                                        <td>{c.compliance}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <DashboardLayout role="admin">
+            <div className="admin-page">
+                <div className="page-header">
+                    <h2><FaBuilding /> Companies Management</h2>
+                    <button className="btn-primary"><FaPlus /> Add Company</button>
                 </div>
 
-                <div className="detail-section">
-                  <h4>Security Overview</h4>
-                  <div className="stats-mini-grid">
-                    <div className="stat-mini">
-                      <label>Compliance</label>
-                      <div className="progress-circle">
-                        <span>{selectedCompany.compliance}%</span>
-                      </div>
+                {/* Stats Cards - BISA DI KLIK */}
+                <div className="stats-grid">
+                    <div className="stat-card clickable" onClick={() => handleStatClick('total')}>
+                        <div className="stat-icon blue"><FaBuilding /></div>
+                        <h3>{stats.total}</h3>
+                        <p>Total Companies</p>
+                        <span className="stat-trend up"><FaArrowUp /> +2</span>
                     </div>
-                    <div className="stat-mini">
-                      <label>Findings</label>
-                      <div className="findings-summary">
-                        <div><span className="critical-dot"></span> Critical: {selectedCompany.criticalFindings}</div>
-                        <div><span className="high-dot"></span> High: {selectedCompany.highFindings}</div>
-                        <div><span className="medium-dot"></span> Medium: {selectedCompany.mediumFindings}</div>
-                      </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('active')}>
+                        <div className="stat-icon green"><FaCheckCircle /></div>
+                        <h3>{stats.active}</h3>
+                        <p>Active</p>
                     </div>
-                    <div className="stat-mini">
-                      <label>Exposure Level</label>
-                      <span className={`exposure-badge large ${selectedCompany.exposure.toLowerCase()}`}>
-                        {selectedCompany.exposure}
-                      </span>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('warning')}>
+                        <div className="stat-icon orange"><FaExclamationTriangle /></div>
+                        <h3>{stats.warning}</h3>
+                        <p>Warning</p>
                     </div>
-                  </div>
+                    <div className="stat-card clickable" onClick={() => handleStatClick('inactive')}>
+                        <div className="stat-icon red"><FaTimesCircle /></div>
+                        <h3>{stats.inactive}</h3>
+                        <p>Inactive</p>
+                    </div>
                 </div>
-              </div>
 
-              <div className="modal-actions">
-                <button className="btn-secondary" onClick={() => setShowDetails(false)}>Close</button>
-                <button className="btn-primary">Schedule Audit</button>
-              </div>
+                {/* Search */}
+                <div className="search-bar">
+                    <FaSearch className="search-icon" />
+                    <input placeholder="Search companies..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+
+                {/* Table */}
+                <div className="table-container">
+                    <table className="admin-table">
+                        <thead><tr><th>Name</th><th>Email</th><th>Sector</th><th>Status</th><th>Compliance</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {filteredCompanies.map(c => (
+                                <tr key={c.id} className="clickable-row" onClick={() => handleRowClick(c)}>
+                                    <td>{c.name}</td>
+                                    <td>{c.email}</td>
+                                    <td>{c.sector}</td>
+                                    <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                                    <td>{c.compliance}%</td>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                        <button className="icon-btn"><FaEdit /></button>
+                                        <button className="icon-btn"><FaTrash /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <StatsModal />
+                <DetailModal />
             </div>
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
-  );
+        </DashboardLayout>
+    );
 };
 
 export default AdminCompanies;
