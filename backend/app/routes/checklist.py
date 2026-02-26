@@ -119,3 +119,24 @@ async def generate_checklist(
 
 
 @router.post("/audit-result", response_model=Audit
+
+# app/routes/checklist.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from ..database import get_db
+from ..models import NistChecklist
+
+router = APIRouter(prefix="/checklist", tags=["NIST CSF Checklist"])
+
+@router.get("/")
+def get_all_checklist(
+    function: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all NIST CSF checklist items"""
+    query = db.query(NistChecklist)
+    if function:
+        query = query.filter(NistChecklist.function_name == function)
+    return query.all()
