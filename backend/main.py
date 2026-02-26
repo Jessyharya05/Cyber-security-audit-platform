@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, users, companies, assets, evidence, audit, findings, reports
+from app.routes import (
+    auth, users, companies, assets, evidence, risk
+)
 from app.models import engine, Base
 
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CyberGuard API", version="1.0")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -21,9 +25,7 @@ app.include_router(users.router)
 app.include_router(companies.router)
 app.include_router(assets.router)
 app.include_router(evidence.router)
-app.include_router(audit.router)
-app.include_router(findings.router)
-app.include_router(reports.router)
+app.include_router(risk.router)   # ← NAMANYA risk.router, BUKAN audit.router!
 
 @app.get("/")
 async def root():
