@@ -7,7 +7,6 @@ from ..database import get_db
 from ..models import Vulnerability
 from ..schemas import VulnerabilityResponse
 
-# PENTING: NAMA VARIABLE HARUS 'router' (huruf kecil)
 router = APIRouter(prefix="/vulnerabilities", tags=["Vulnerabilities"])
 
 @router.get("/", response_model=List[VulnerabilityResponse])

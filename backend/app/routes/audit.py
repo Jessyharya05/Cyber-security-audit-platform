@@ -1,63 +1,46 @@
 # backend/app/routes/audit.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import date, datetime  # <-- FIX: tambah datetime
-from ..models import SessionLocal, Audit, Company, Auditor, Finding
-from .auth import get_current_user
+from typing import List, Optional
+from datetime import date, datetime
+
+from ..models import SessionLocal, Audit, Company, User, Auditor
+from .auth import get_current_user_dependency
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
-# Pydantic models
-class AuditBase(BaseModel):
+class AuditCreate(BaseModel):
     companyId: int
     auditorId: int
     scope: str
-    startDate: date
-    endDate: date
+    startDate: Optional[date] = None
+    endDate: Optional[date] = None
+    priority: Optional[str] = "medium"
 
-class AuditCreate(AuditBase):
-    pass
-
-class AuditUpdate(BaseModel):
-    status: str
-    progress: int
-    findings: int
-    criticalFindings: int
-
-class AuditResponse(AuditBase):
+# ✅ SEMUA FIELD OPTIONAL supaya data lama dengan NULL tidak crash
+class AuditResponse(BaseModel):
     id: int
-    status: str
-    progress: int
-    findings: int
-    criticalFindings: int
-    created_at: datetime  # <-- sekarang udah kenal datetime
-    
+    companyId: int
+    auditorId: int
+    scope: Optional[str] = None
+    startDate: Optional[date] = None
+    endDate: Optional[date] = None
+    status: Optional[str] = "pending"
+    progress: Optional[int] = 0
+    findings: Optional[int] = 0          # ← NULL-safe
+    criticalFindings: Optional[int] = 0  # ← NULL-safe
+    priority: Optional[str] = "medium"
+    created_at: Optional[datetime] = None  # ← NULL-safe
+    companyName: Optional[str] = None
+    auditorName: Optional[str] = None
+
     class Config:
         from_attributes = True
-        
-class FindingBase(BaseModel):
-    title: str
-    description: str
-    severity: str
-    asset: str
-    due_date: date
-    recommendation: str
 
-class FindingCreate(FindingBase):
-    company_id: int
-
-class FindingResponse(FindingBase):
+class CompanySimple(BaseModel):
     id: int
-    company_id: int
-    status: str
-    discovered: date
-    progress: int
-    
-    class Config:
-        from_attributes = True
+    name: str
 
 def get_db():
     db = SessionLocal()
@@ -66,93 +49,138 @@ def get_db():
     finally:
         db.close()
 
-# Audit endpoints
+def get_auditor_from_user(current_user, db: Session):
+    return db.query(Auditor).filter(Auditor.email == current_user.email).first()
+
+def serialize_audit(a, db):
+    """Serialize audit dengan handle NULL dari data lama di DB"""
+    company = db.query(Company).filter(Company.id == a.companyId).first()
+    auditor_record = db.query(Auditor).filter(Auditor.id == a.auditorId).first()
+    return {
+        "id": a.id,
+        "companyId": a.companyId,
+        "companyName": company.name if company else "Unknown",
+        "auditorId": a.auditorId,
+        "auditorName": auditor_record.name if auditor_record else "Unknown",
+        "scope": a.scope or "",
+        "startDate": a.startDate,
+        "endDate": a.endDate,
+        "status": a.status or "pending",
+        "progress": a.progress or 0,
+        "findings": a.findings if a.findings is not None else 0,
+        "criticalFindings": a.criticalFindings if a.criticalFindings is not None else 0,
+        "priority": getattr(a, 'priority', 'medium') or 'medium',
+        "created_at": a.created_at or datetime.utcnow()
+    }
+
+
+@router.get("/my-companies", response_model=List[CompanySimple])
+async def get_my_companies(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    if current_user.role != 'auditor':
+        raise HTTPException(status_code=403, detail="Auditor only")
+    auditor = get_auditor_from_user(current_user, db)
+    if not auditor:
+        raise HTTPException(status_code=404, detail="Auditor profile not found")
+    audits = db.query(Audit).filter(Audit.auditorId == auditor.id).all()
+    company_ids = list(set([a.companyId for a in audits]))
+    if not company_ids:
+        return []
+    companies = db.query(Company).filter(Company.id.in_(company_ids)).all()
+    return [{"id": c.id, "name": c.name} for c in companies]
+
+
 @router.get("/", response_model=List[AuditResponse])
-async def get_audits(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    if user['role'] == 'admin':
-        audits = db.query(Audit).all()
-    elif user['role'] == 'auditor':
-        # Get auditor id from user email (simplified)
-        auditor = db.query(Auditor).filter(Auditor.email == user['email']).first()
-        if auditor:
-            audits = db.query(Audit).filter(Audit.auditorId == auditor.id).all()
-        else:
-            audits = []
-    else:
-        # Auditee - get company audits
-        company = db.query(Company).filter(Company.user_id == user['id']).first()
-        if company:
-            audits = db.query(Audit).filter(Audit.companyId == company.id).all()
-        else:
-            audits = []
-    
-    return audits
+async def get_audits(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    query = db.query(Audit)
+    if current_user.role == 'auditor':
+        auditor = get_auditor_from_user(current_user, db)
+        if not auditor:
+            return []
+        query = query.filter(Audit.auditorId == auditor.id)
+    audits = query.all()
+    return [serialize_audit(a, db) for a in audits]
+
 
 @router.post("/", response_model=AuditResponse)
-async def schedule_audit(audit: AuditCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    # Only admin can schedule audits
-    if user['role'] != 'admin':
-        raise HTTPException(status_code=403, detail="Only admin can schedule audits")
-    
-    new_audit = Audit(**audit.dict(), status="pending", progress=0, findings=0, criticalFindings=0)
+async def create_audit(
+    audit: AuditCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    company = db.query(Company).filter(Company.id == audit.companyId).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    auditor = db.query(Auditor).filter(Auditor.id == audit.auditorId).first()
+    if not auditor:
+        raise HTTPException(status_code=404, detail="Auditor not found")
+    new_audit = Audit(
+        companyId=audit.companyId, auditorId=audit.auditorId,
+        scope=audit.scope, startDate=audit.startDate, endDate=audit.endDate,
+        status="pending", progress=0, findings=0, criticalFindings=0
+    )
     db.add(new_audit)
     db.commit()
     db.refresh(new_audit)
-    
-    return new_audit
+    return serialize_audit(new_audit, db)
 
-@router.put("/{audit_id}", response_model=AuditResponse)
-async def update_audit(audit_id: int, audit_update: AuditUpdate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+
+@router.get("/{audit_id}", response_model=AuditResponse)
+async def get_audit_by_id(
+    audit_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
-    
-    for key, value in audit_update.dict().items():
-        setattr(audit, key, value)
-    
+    if current_user.role == 'auditor':
+        auditor = get_auditor_from_user(current_user, db)
+        if not auditor or audit.auditorId != auditor.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    return serialize_audit(audit, db)
+
+
+@router.put("/{audit_id}")
+async def update_audit(
+    audit_id: int,
+    audit_data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    if current_user.role == 'auditor':
+        auditor = get_auditor_from_user(current_user, db)
+        if not auditor or audit.auditorId != auditor.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    for key, value in audit_data.items():
+        if hasattr(audit, key):
+            setattr(audit, key, value)
     db.commit()
     db.refresh(audit)
-    
-    return audit
+    return serialize_audit(audit, db)
 
-# Findings endpoints
-@router.get("/findings/company/{company_id}", response_model=List[FindingResponse])
-async def get_findings(company_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    findings = db.query(Finding).filter(Finding.company_id == company_id).all()
-    return findings
 
-@router.post("/findings", response_model=FindingResponse)
-async def create_finding(finding: FindingCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    new_finding = Finding(
-        **finding.dict(),
-        status="open",
-        discovered=date.today(),
-        progress=0
-    )
-    
-    db.add(new_finding)
+@router.delete("/{audit_id}")
+async def delete_audit(
+    audit_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    db.delete(audit)
     db.commit()
-    db.refresh(new_finding)
-    
-    # Update audit findings count
-    audit = db.query(Audit).filter(Audit.companyId == finding.company_id).first()
-    if audit:
-        audit.findings += 1
-        if finding.severity == "critical":
-            audit.criticalFindings += 1
-        db.commit()
-    
-    return new_finding
-
-@router.put("/findings/{finding_id}", response_model=FindingResponse)
-async def update_finding(finding_id: int, status: str, progress: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    finding = db.query(Finding).filter(Finding.id == finding_id).first()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
-    
-    finding.status = status
-    finding.progress = progress
-    db.commit()
-    db.refresh(finding)
-    
-    return finding
+    return {"success": True, "message": "Audit deleted"}

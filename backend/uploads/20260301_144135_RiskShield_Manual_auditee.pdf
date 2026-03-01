@@ -1,0 +1,449 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 4520
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F1 22 Tf
+25.2999999999999972 TL
+0.059 0.09 0.165 rg
+181.5877952755905653 785.1970866141732586 Td
+(RISK SHIELD SYSTEM) Tj
+ET
+BT
+/F1 16 Tf
+18.3999999999999986 TL
+0.059 0.09 0.165 rg
+157.8777952755905574 756.8506299212598378 Td
+(Official User Manual - AUDITEE Edition) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 0.455 0.545 rg
+234.2777952755905631 739.8427559055118081 Td
+(Document Version: 1.0.0-Stable) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 0.455 0.545 rg
+220.1027952755905517 725.6695275590550409 Td
+(Generated on: 2/28/2026, 11:00:15 PM) Tj
+ET
+0.89 0.91 0.94 RG
+1.4173228346456694 w
+56.6929133858267775 714.3309448818897636 m
+538.5826771653544256 714.3309448818897636 l
+S
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 685.9844881889763428 Td
+(AUTHORIZED DOCUMENTATION) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 666.1419685039369369 Td
+(Prepared By: null null) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 651.9687401574802834 Td
+(Author Email: null) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 637.7955118110235162 Td
+(Website: https://www.riskshieldsystem.my.id/) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+387.1826771653543346 666.1419685039369369 Td
+(Organization: Risk Shield Platform) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+430.7826771653544142 651.9687401574802834 Td
+(Security Role: AUDITEE) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+422.982677165354346 637.7955118110235162 Td
+(System ID: RS-GEN-2026) Tj
+ET
+56.6929133858267775 623.6222834645668627 m
+538.5826771653544256 623.6222834645668627 l
+S
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 595.2758267716535556 Td
+(Introduction to Risk Shield) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 575.4333070866141497 Td
+(Risk Shield System is an integrated GRC \(Governance, Risk, and Compliance\) platform. It helps) Tj
+T* (organizations automate cybersecurity risk analysis based on the OCTAVE Allegro methodology. Designed for) Tj
+T* (security teams, it bridges the gap between technical vulnerabilities and business impact.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 498.8978740157479592 Td
+(System Navigation & UI) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 479.0553543307086102 Td
+(Our NASA-inspired dashboard provides real-time visibility. The Sidebar allows access to core modules like) Tj
+T* (Dashboard, Project Wizard, Audit Center, and AI Advisor. The Intelligence Stream at the top provides) Tj
+T* (real-time security alerts and system telemetry.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 402.5199212598424765 Td
+(Support & Admin Hub) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 382.6774015748030706 Td
+(For technical support, account management, or reporting unauthorized access, please visit the official) Tj
+T* (Support portal at https://www.riskshieldsystem.my.id/support or contact your designated System) Tj
+T* (Administrator directly. High-priority security concerns should be reported via the Admin Hub available in the) Tj
+T* (dashboard settings.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 291.9687401574802834 Td
+(Dashboard for Auditees) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 272.1262204724408775 Td
+(As an Auditee, your primary focus is on assigned security projects. The dashboard summarizes current risk) Tj
+T* (assessments and critical alerts relevant to your department or organizational unit.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 209.7640157480313974 Td
+(Step-by-Step Tutorial: Uploading Evidence) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 189.9214960629919915 Td
+(1. Navigate to 'Security Audit' in the sidebar.) Tj
+T* (2. Select the currently active project from the list.) Tj
+T* (3. Click on the 'Evidence' tab to view required documentation.) Tj
+T* (4. Click 'Upload Evidence' next to the specific control item requested by the Auditor.) Tj
+T* (5. Select your file \(PDF, JPG, or DOCX\) and click Save. Your proof will be instantly available for Auditor) Tj
+T* (verification.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.58 0.639 0.722 rg
+162.1577952755905585 19.8427559055116944 Td
+(© 2026 Risk Shield System. Confidential Authorization Required. Page 1 of 2) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 618
+>>
+stream
+1.4173228346456694 w
+0.89 0.91 0.94 RG
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.059 0.09 0.165 rg
+56.6929133858267775 785.1970866141732586 Td
+(Security Awareness) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.278 0.333 0.412 rg
+56.6929133858267775 765.3545669291338527 Td
+(Your participation is vital for the 'Verify Controls' phase of OCTAVE Allegro. Ensure that all uploaded evidence) Tj
+T* (is accurate and reflects current operational practices.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.58 0.639 0.722 rg
+162.1577952755905585 19.8427559055116944 Td
+(© 2026 Risk Shield System. Confidential Authorization Required. Page 2 of 2) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 2.5.2)
+/CreationDate (D:20260228230015+07'00')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000005530 00000 n 
+0000007355 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000004724 00000 n 
+0000004861 00000 n 
+0000005593 00000 n 
+0000005718 00000 n 
+0000005848 00000 n 
+0000005981 00000 n 
+0000006119 00000 n 
+0000006243 00000 n 
+0000006372 00000 n 
+0000006504 00000 n 
+0000006640 00000 n 
+0000006768 00000 n 
+0000006895 00000 n 
+0000007024 00000 n 
+0000007157 00000 n 
+0000007259 00000 n 
+0000007605 00000 n 
+0000007691 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <8EB62138251BF40E54E7026C0F43981B> <8EB62138251BF40E54E7026C0F43981B> ]
+>>
+startxref
+7795
+%%EOF

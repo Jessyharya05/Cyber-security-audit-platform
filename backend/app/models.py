@@ -105,17 +105,16 @@ class Audit(Base):
     __tablename__ = "audits"
     
     id = Column(Integer, primary_key=True, index=True)
-    companyId = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    auditorId = Column(Integer, ForeignKey("auditors.id"), nullable=False)
+    companyId = Column("company_id", Integer, ForeignKey("companies.id"), nullable=False)
+    auditorId = Column("auditor_id", Integer, ForeignKey("auditors.id"), nullable=False)
     scope = Column(String(200))
-    startDate = Column(Date)
-    endDate = Column(Date)
+    startDate = Column("start_date", Date)
+    endDate = Column("end_date", Date)
     status = Column(String(20), default="pending")
     progress = Column(Integer, default=0)
     findings = Column(Integer, default=0)
-    criticalFindings = Column(Integer, default=0)
+    criticalFindings = Column("critical_findings", Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
-
 
 # ============================================
 # EVIDENCE TABLE

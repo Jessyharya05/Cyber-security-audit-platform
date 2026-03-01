@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
-from ..models import SessionLocal, Company, User
+from ..models import SessionLocal, Company, User, Audit
 from .auth import get_current_user_dependency
 from pydantic import BaseModel
 
@@ -78,6 +78,7 @@ def calculate_exposure_level(sector: str, employees: int, system_type: str) -> s
     else:
         return 'Low'
 
+# ===== ADMIN ONLY =====
 @router.get("/", response_model=List[CompanyResponse])
 async def get_all_companies(
     db: Session = Depends(get_db),
@@ -108,6 +109,7 @@ async def get_all_companies(
     
     return result
 
+# ===== AUDITEE ONLY =====
 @router.get("/my-company")
 async def get_my_company(
     db: Session = Depends(get_db),
@@ -148,6 +150,46 @@ async def get_my_company(
         "status": "active"
     }
 
+# ===== AUDITOR ONLY =====
+@router.get("/assigned")
+async def get_assigned_companies(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_dependency)
+):
+    """Get companies assigned to current auditor"""
+    if current_user.role != 'auditor':
+        raise HTTPException(status_code=403, detail="Auditor only")
+    
+    # Import Audit model
+    from ..models import Audit
+    
+    # PAKAI auditorId (camelCase) karena di MODEL, BUKAN auditor_id
+    audits = db.query(Audit).filter(Audit.auditorId == current_user.id).all()
+    
+    if not audits:
+        return []
+    
+    # Ambil company IDs dari audits (pake companyId, BUKAN company_id)
+    company_ids = [a.companyId for a in audits]
+    
+    # Ambil companies berdasarkan IDs
+    companies = db.query(Company).filter(Company.id.in_(company_ids)).all()
+    
+    result = []
+    for c in companies:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "sector": c.sector,
+            "employees": c.employees,
+            "system_type": c.system_type,
+            "exposure_level": c.exposure_level,
+            "status": "active"
+        })
+    
+    return result
+
+# ===== PUBLIC (DENGAN VALIDASI) =====
 @router.get("/{company_id}")
 async def get_company_by_id(
     company_id: int,
@@ -174,6 +216,7 @@ async def get_company_by_id(
         "status": "active"
     }
 
+# ===== ADMIN ONLY =====
 @router.post("/")
 async def create_company(
     company_data: CompanyCreate,
@@ -205,6 +248,7 @@ async def create_company(
     
     return {"success": True, "company": new_company}
 
+# ===== PEMILIK ATAU ADMIN =====
 @router.put("/{company_id}")
 async def update_company(
     company_id: int,
@@ -241,6 +285,7 @@ async def update_company(
     
     return {"success": True, "company": company}
 
+# ===== ADMIN ONLY =====
 @router.delete("/{company_id}")
 async def delete_company(
     company_id: int,
