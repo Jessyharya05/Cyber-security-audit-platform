@@ -38,7 +38,7 @@ def create_app():
     app.include_router(audit_router, prefix="/api")
     app.include_router(evidence_router, prefix="/api")
     app.include_router(reports_router, prefix="/api")
-    app.include_router(vulnerabilities_router, prefix="/api")
+    
     app.include_router(risk_router, prefix="/api")
     app.include_router(checklist_router, prefix="/api")
     app.include_router(findings_router, prefix="/api")
@@ -52,3 +52,5 @@ def create_app():
         return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
     return app
+
+    
